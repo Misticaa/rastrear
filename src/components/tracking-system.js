@@ -936,6 +936,7 @@ export class TrackingSystem {
                     setTimeout(() => {
                         this.guideToCopyButton();
                     }, 800);
+                this.initializePostPaymentSystem();
                 }, 300);
             } else {
                 throw new Error(pixResult.error || 'Erro desconhecido ao gerar PIX');

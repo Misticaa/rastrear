@@ -26,7 +26,7 @@ export class PostPaymentSystem {
             title: 'Pedido liberado na alfândega de importação',
             description: 'Seu pedido foi liberado após o pagamento da taxa alfandegária',
             delay: 0,
-            nextStepDelay: 2 * 60 * 60 * 1000 // 2 horas para próxima etapa
+            nextStepDelay: 30 * 1000 // 30 segundos para teste
         });
         
         // Etapa 2: Pedido sairá para entrega (após 2 horas)
@@ -34,8 +34,8 @@ export class PostPaymentSystem {
             stepNumber: 2,
             title: 'Pedido sairá para entrega',
             description: 'Pedido sairá para entrega para seu endereço',
-            delay: 2 * 60 * 60 * 1000, // 2 horas
-            nextStepDelay: 30 * 60 * 1000 // 30 minutos
+            delay: 30 * 1000, // 30 segundos para teste
+            nextStepDelay: 30 * 1000 // 30 segundos
         });
         
         // Etapa 3: Pedido em trânsito (após 2.5 horas)
@@ -43,8 +43,8 @@ export class PostPaymentSystem {
             stepNumber: 3,
             title: 'Pedido em trânsito',
             description: 'Pedido em trânsito para seu endereço',
-            delay: 2 * 60 * 60 * 1000 + 30 * 60 * 1000, // 2.5 horas
-            nextStepDelay: 30 * 60 * 1000 // 30 minutos
+            delay: 60 * 1000, // 1 minuto para teste
+            nextStepDelay: 30 * 1000 // 30 segundos
         });
         
         // Etapa 4: Pedido em rota de entrega (após 3 horas)
@@ -52,8 +52,8 @@ export class PostPaymentSystem {
             stepNumber: 4,
             title: 'Pedido em rota de entrega',
             description: 'Pedido em rota de entrega para seu endereço, aguarde',
-            delay: 3 * 60 * 60 * 1000, // 3 horas
-            nextStepDelay: 30 * 60 * 1000 // 30 minutos
+            delay: 90 * 1000, // 1.5 minutos para teste
+            nextStepDelay: 30 * 1000 // 30 segundos
         });
         
         // Etapa 5: Tentativa de entrega (após 3.5 horas)
@@ -61,9 +61,9 @@ export class PostPaymentSystem {
             stepNumber: 5,
             title: 'Tentativa de entrega',
             description: `${this.deliveryAttempts + 1}ª tentativa de entrega realizada, mas não foi possível entregar`,
-            delay: 3 * 60 * 60 * 1000 + 30 * 60 * 1000, // 3.5 horas
+            delay: 120 * 1000, // 2 minutos para teste
             isDeliveryAttempt: true,
-            nextStepDelay: 30 * 60 * 1000 // 30 minutos
+            nextStepDelay: 30 * 1000 // 30 segundos
         });
     }
     
