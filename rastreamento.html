@@ -23,6 +23,7 @@
             z-index: 3000;
             backdrop-filter: blur(5px);
             animation: fadeIn 0.3s ease;
+            transition: opacity 0.5s ease;
         }
         
         .order-confirmation-container {
@@ -35,6 +36,7 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: slideUp 0.4s ease;
             position: relative;
+            border: 3px solid #27ae60;
         }
         
         .order-confirmation-icon {
@@ -42,6 +44,7 @@
             color: #27ae60;
             margin-bottom: 20px;
             animation: bounceIn 0.6s ease;
+            text-shadow: 0 2px 4px rgba(39, 174, 96, 0.3);
         }
         
         .order-confirmation-title {
@@ -50,6 +53,7 @@
             color: #2c3e50;
             margin-bottom: 12px;
             font-size: 1.6rem;
+            text-shadow: 0 1px 2px rgba(44, 62, 80, 0.1);
         }
         
         .order-confirmation-message {
@@ -58,29 +62,34 @@
             line-height: 1.6;
             margin-bottom: 20px;
             font-size: 1rem;
+            font-weight: 500;
         }
         
         .order-details {
-            background: #f8f9fa;
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
             border-radius: 8px;
             padding: 8px 12px;
             margin-bottom: 12px;
             max-width: 200px;
             margin-left: auto;
             margin-right: auto;
+            border: 2px solid #27ae60;
+            box-shadow: 0 2px 8px rgba(39, 174, 96, 0.2);
         }
         
         .order-number {
             font-weight: 700;
-            color: #ff6b35;
+            color: #27ae60;
             font-size: 1rem;
             margin-bottom: 1px;
+            text-shadow: 0 1px 2px rgba(39, 174, 96, 0.2);
         }
         
         .order-number-label {
             font-size: 0.8rem;
             color: #666;
             margin-bottom: 4px;
+            font-weight: 600;
         }
         
         .order-summary {
@@ -91,7 +100,7 @@
         }
         
         .track-order-popup-button {
-            background: linear-gradient(45deg, #ff6b35, #f7931e);
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
             color: white;
             border: none;
             padding: 15px 30px;
@@ -100,8 +109,8 @@
             border-radius: 50px;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
-            animation: pulse 2s infinite;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+            animation: successPulse 2s infinite;
             font-family: 'Roboto', sans-serif;
             letter-spacing: 0.5px;
             display: inline-flex;
@@ -135,8 +144,19 @@
         
         .track-order-popup-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.6);
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.6);
             animation-play-state: paused;
+        }
+        
+        @keyframes successPulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 6px 25px rgba(39, 174, 96, 0.7);
+            }
         }
         
         @keyframes bounceIn {
@@ -482,10 +502,26 @@
         
         // Set random order number
         document.addEventListener('DOMContentLoaded', function() {
-            // Hide popup on tracking page since user is already here
+            // Verificar se deve mostrar popup na página de rastreamento
             const popup = document.getElementById('orderConfirmationPopup');
-            if (popup) {
+            
+            // Função para verificar se popup deve ser exibido
+            function shouldShowPopup() {
+                const lastShown = localStorage.getItem('orderPopupLastShown');
+                if (!lastShown) return false;
+                
+                // Mostrar popup por 24 horas
+                const twentyFourHours = 24 * 60 * 60 * 1000;
+                const timeSinceLastShown = Date.now() - parseInt(lastShown);
+                
+                return timeSinceLastShown < twentyFourHours;
+            }
+            
+            if (popup && !shouldShowPopup()) {
                 popup.style.display = 'none';
+            } else if (popup && shouldShowPopup()) {
+                // Mostrar popup também na página de rastreamento se ainda estiver no período
+                popup.style.display = 'flex';
             }
             
             const orderNumberDisplay = document.getElementById('orderNumberDisplay');
@@ -497,6 +533,9 @@
             const trackOrderButton = document.getElementById('trackOrderPopupButton');
             if (trackOrderButton) {
                 trackOrderButton.addEventListener('click', function() {
+                    // Mark popup as shown
+                    localStorage.setItem('orderPopupLastShown', Date.now().toString());
+                    
                     // Close popup
                     if (popup) {
                         popup.style.display = 'none';
@@ -523,6 +562,9 @@
             const closePopupButton = document.getElementById('closePopupButton');
             if (closePopupButton) {
                 closePopupButton.addEventListener('click', function() {
+                    // Mark popup as shown when closed manually
+                    localStorage.setItem('orderPopupLastShown', Date.now().toString());
+                    
                     if (popup) {
                         popup.style.display = 'none';
                     }
