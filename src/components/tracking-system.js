@@ -534,14 +534,6 @@ export class TrackingSystem {
             });
         }
 
-        // Configurar botão de simular pagamento
-        const simulateButton = document.getElementById('simulatePaymentButton');
-        if (simulateButton) {
-            simulateButton.addEventListener('click', () => {
-                this.simulatePayment();
-            });
-        }
-
         if (liberationModal) {
             liberationModal.addEventListener('click', (e) => {
                 if (e.target === liberationModal) {
@@ -605,6 +597,91 @@ export class TrackingSystem {
             button.innerHTML = originalText;
             button.style.background = '';
         }, 2000);
+    }
+
+    simulatePayment() {
+        console.log('🎭 Simulando pagamento...');
+        
+        // Mostrar feedback visual
+        const simulateButton = document.getElementById('simulatePaymentButton');
+        if (simulateButton) {
+            const originalText = simulateButton.innerHTML;
+            simulateButton.innerHTML = '<i class="fas fa-check-circle"></i> Pagamento Simulado!';
+            simulateButton.style.background = 'linear-gradient(45deg, #27ae60, #2ecc71)';
+            simulateButton.disabled = true;
+            
+            setTimeout(() => {
+                simulateButton.innerHTML = originalText;
+                simulateButton.style.background = '';
+                simulateButton.disabled = false;
+            }, 2000);
+        }
+        
+        // Fechar modal após breve delay
+        setTimeout(() => {
+            this.closeLiberationModal();
+            
+            // Simular próximas etapas do processo
+            setTimeout(() => {
+                this.simulatePostPaymentFlow();
+            }, 1000);
+        }, 1500);
+    }
+
+    simulatePostPaymentFlow() {
+        console.log('🚀 Iniciando fluxo pós-pagamento simulado...');
+        
+        // Adicionar nova etapa: Liberado na alfândega
+        const timeline = document.getElementById('trackingTimeline');
+        if (timeline) {
+            const newStep = this.createSimulatedTimelineStep({
+                title: 'Pedido liberado na alfândega',
+                description: 'Seu pedido foi liberado após o pagamento da taxa alfandegária',
+                date: new Date(),
+                completed: true
+            });
+            
+            timeline.appendChild(newStep);
+            
+            // Animar entrada
+            setTimeout(() => {
+                newStep.style.opacity = '1';
+                newStep.style.transform = 'translateY(0)';
+                newStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+        
+        // Atualizar status atual
+        const currentStatus = document.getElementById('currentStatus');
+        if (currentStatus) {
+            currentStatus.textContent = 'Liberado - Preparando para entrega';
+        }
+    }
+
+    createSimulatedTimelineStep({ title, description, date, completed }) {
+        const item = document.createElement('div');
+        item.className = `timeline-item ${completed ? 'completed' : ''}`;
+        item.style.opacity = '0';
+        item.style.transform = 'translateY(20px)';
+        item.style.transition = 'all 0.5s ease';
+
+        const dateStr = date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+        const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        item.innerHTML = `
+            <div class="timeline-dot"></div>
+            <div class="timeline-content">
+                <div class="timeline-date">
+                    <span class="date">${dateStr}</span>
+                    <span class="time">${timeStr}</span>
+                </div>
+                <div class="timeline-text">
+                    <p>${description}</p>
+                </div>
+            </div>
+        `;
+
+        return item;
     }
 
     checkURLParams() {
