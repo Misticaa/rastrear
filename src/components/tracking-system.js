@@ -348,28 +348,7 @@ export class TrackingSystem {
 
         // Adicionar botão de simulação para a última etapa completada (exceto se for liberação)
         if (step.completed && !step.needsLiberation && index === this.trackingData.steps.length - 2) {
-            buttonHtml = `
-                <button class="simulation-button-timeline" data-simulation-button style="
-                    background: linear-gradient(45deg, #27ae60, #2ecc71);
-                    color: white;
-                    border: none;
-                    padding: 10px 20px;
-                    font-size: 0.9rem;
-                    font-weight: 600;
-                    border-radius: 20px;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    box-shadow: 0 3px 10px rgba(39, 174, 96, 0.4);
-                    font-family: 'Roboto', sans-serif;
-                    letter-spacing: 0.3px;
-                    margin-top: 12px;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                ">
-                    <i class="fas fa-forward"></i> Simular Próxima Etapa
-                </button>
-            `;
+            // Botão de simulação removido
         }
         item.innerHTML = `
             <div class="timeline-dot"></div>
@@ -388,28 +367,6 @@ export class TrackingSystem {
             </div>
         `;
 
-        // Configurar evento do botão de simulação
-        if (buttonHtml.includes('simulation-button-timeline')) {
-            setTimeout(() => {
-                const simButton = item.querySelector('.simulation-button-timeline');
-                if (simButton) {
-                    simButton.addEventListener('click', () => {
-                        this.simulateNextStep();
-                    });
-                    
-                    // Efeito hover
-                    simButton.addEventListener('mouseenter', function() {
-                        this.style.transform = 'translateY(-2px)';
-                        this.style.boxShadow = '0 5px 15px rgba(39, 174, 96, 0.6)';
-                    });
-                    
-                    simButton.addEventListener('mouseleave', function() {
-                        this.style.transform = 'translateY(0)';
-                        this.style.boxShadow = '0 3px 10px rgba(39, 174, 96, 0.4)';
-                    });
-                }
-            }, 100);
-        }
         return item;
     }
 
@@ -1093,87 +1050,5 @@ export class TrackingSystem {
         }
     }
 
-    // Método para simular próxima etapa
-    simulateNextStep() {
-        console.log('🎭 Simulando próxima etapa...');
-        
-        // Verificar se há etapas incompletas
-        const incompleteSteps = this.trackingData.steps.filter(step => !step.completed);
-        
-        if (incompleteSteps.length > 0) {
-            // Completar próxima etapa
-            const nextStep = incompleteSteps[0];
-            nextStep.completed = true;
-            nextStep.date = new Date(); // Atualizar para agora
-            
-            // Recriar timeline
-            this.displayTrackingResults();
-            
-            // Mostrar notificação
-            this.showSimulationNotification(`Etapa "${nextStep.title}" simulada com sucesso!`);
-            
-            console.log('✅ Próxima etapa simulada:', nextStep.title);
-        } else {
-            // Se todas as etapas estão completas, iniciar fluxo pós-liberação
-            if (!this.liberationPaid) {
-                this.showSimulationNotification('Todas as etapas foram completadas. Use "LIBERAR OBJETO" para continuar.');
-            } else {
-                this.showSimulationNotification('Todas as etapas já foram completadas!');
-            }
-        }
-    }
 
-    // Mostrar notificação de simulação
-    showSimulationNotification(message) {
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(45deg, #27ae60, #2ecc71);
-            color: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
-            z-index: 3000;
-            animation: slideInRight 0.5s ease;
-            font-family: 'Inter', sans-serif;
-            font-weight: 600;
-            max-width: 300px;
-        `;
-        
-        notification.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-check-circle" style="font-size: 18px;"></i>
-                <span>${message}</span>
-            </div>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Remover após 3 segundos
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.style.animation = 'slideOutRight 0.5s ease';
-                setTimeout(() => notification.remove(), 500);
-            }
-        }, 3000);
-        
-        // Adicionar animações CSS se não existirem
-        if (!document.getElementById('simulationAnimations')) {
-            const style = document.createElement('style');
-            style.id = 'simulationAnimations';
-            style.textContent = `
-                @keyframes slideInRight {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-                @keyframes slideOutRight {
-                    from { transform: translateX(0); opacity: 1; }
-                    to { transform: translateX(100%); opacity: 0; }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-    }
 }
