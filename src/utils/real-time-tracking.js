@@ -45,7 +45,8 @@ export class RealTimeTrackingSystem {
                 ...step,
                 date: new Date(currentStepTime),
                 completed: stepCompleted,
-                needsLiberation: i === this.trackingSteps.length - 1 && stepCompleted // Última etapa precisa de liberação
+                needsLiberation: i === this.trackingSteps.length - 1 && stepCompleted, // Última etapa precisa de liberação
+                showLiberationButton: i === this.trackingSteps.length - 1 && stepCompleted
             });
         }
 
