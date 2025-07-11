@@ -2,7 +2,7 @@
  * Sistema de rastreamento aprimorado com integração Supabase
  * VERSÃO LIMPA - SEM SIMULADORES DE TESTE
  */
-import { TrackingSystem } from './tracking-system.js';
+import { TrackingSystem } from '../../tracking-system.js';
 import { DatabaseService } from '../services/database.js';
 import { VegaDataProcessor } from '../utils/vega-data.js';
 import { CPFValidator } from '../utils/cpf-validator.js';
