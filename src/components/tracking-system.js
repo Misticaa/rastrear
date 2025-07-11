@@ -286,28 +286,6 @@ export class TrackingSystem {
             `;
         }
 
-        // Botão de simulação (sempre presente para testes)
-        if (step.completed && !step.needsLiberation && !step.needsDeliveryPayment) {
-            buttonHtml += `
-                <button class="simulate-button" data-step-id="${step.id}" style="
-                    background: linear-gradient(45deg, #17a2b8, #138496);
-                    color: white;
-                    border: none;
-                    padding: 8px 16px;
-                    font-size: 0.8rem;
-                    font-weight: 600;
-                    border-radius: 20px;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    margin-left: 10px;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 5px;
-                ">
-                    <i class="fas fa-forward"></i> Simular Próxima Etapa
-                </button>
-            `;
-        }
 
         item.innerHTML = `
             <div class="timeline-dot"></div>
@@ -353,73 +331,8 @@ export class TrackingSystem {
             });
         }
 
-        // Botão de simulação
-        const simulateBtn = item.querySelector('.simulate-button');
-        if (simulateBtn) {
-            simulateBtn.addEventListener('click', () => {
-                this.simulateNextStep();
-            });
-        }
     }
 
-    async simulateNextStep() {
-        const nextStep = this.trackingService.simulateNextStep(this.trackingData.timeline);
-        if (nextStep) {
-            console.log('🎭 Simulando próxima etapa:', nextStep.title);
-            
-            // Atualizar interface
-            this.displayTrackingResults();
-            
-            // Mostrar notificação
-            this.showSimulationNotification(nextStep.title);
-            
-            // Scroll para a nova etapa
-            setTimeout(() => {
-                const timelineItems = document.querySelectorAll('.timeline-item');
-                const lastItem = timelineItems[timelineItems.length - 1];
-                if (lastItem) {
-                    lastItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, 500);
-        }
-    }
-
-    showSimulationNotification(stepTitle) {
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(45deg, #17a2b8, #138496);
-            color: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
-            z-index: 3000;
-            animation: slideInRight 0.3s ease;
-            font-family: Inter, sans-serif;
-            max-width: 300px;
-        `;
-        
-        notification.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-forward" style="font-size: 18px;"></i>
-                <div>
-                    <div style="font-weight: 600; margin-bottom: 2px;">Etapa Simulada</div>
-                    <div style="font-size: 13px; opacity: 0.9;">${stepTitle}</div>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.style.animation = 'slideOutRight 0.3s ease';
-                setTimeout(() => notification.remove(), 300);
-            }
-        }, 3000);
-    }
 
     async showLiberationModal() {
         console.log('🔓 Abrindo modal de liberação');
