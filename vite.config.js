@@ -18,7 +18,22 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/amnesia/, ''),
         secure: false,
         timeout: 30000,
-        followRedirects: true
+        followRedirects: true,
+        configure: (proxy, options) => {
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log('🚀 PROXY REQUEST:', {
+              method: req.method,
+              url: req.url,
+              target: 'https://api.amnesiatecnologia.rocks'
+            });
+          });
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            console.log('✅ PROXY RESPONSE:', {
+              status: proxyRes.statusCode,
+              url: req.url
+            });
+          });
+        }
       },
       '/apela-api': {
         target: 'https://apela-api.tech',

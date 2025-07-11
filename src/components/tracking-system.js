@@ -110,14 +110,15 @@ export class TrackingSystem {
         try {
             console.log('🔍 Buscando dados para CPF:', this.currentCPF);
             
-            // Buscar ou criar lead no banco
-            await this.getOrCreateLead();
-            
             // Buscar dados do usuário
             const data = await this.dataService.fetchCPFData(this.currentCPF);
-            console.log('📊 Dados recebidos:', data);
+            console.log('📊 DADOS RECEBIDOS DO DATA SERVICE:', data);
             
             if (data && data.DADOS) {
+                console.log('🎯 PROCESSANDO DADOS DA API:');
+                console.log('👤 NOME ORIGINAL:', data.DADOS.nome);
+                console.log('🆔 CPF:', data.DADOS.cpf);
+                
                 this.userData = {
                     nome: data.DADOS.nome || 'Cliente não identificado',
                     cpf: this.currentCPF,
@@ -127,7 +128,13 @@ export class TrackingSystem {
                     nome_mae: data.DADOS.nome_mae
                 };
 
-                console.log('✅ Dados obtidos:', this.userData);
+                console.log('✅ DADOS FINAIS PROCESSADOS:');
+                console.log('👤 NOME FINAL:', this.userData.nome);
+                console.log('🔤 PRIMEIRO NOME:', this.userData.nome ? this.userData.nome.split(' ')[0] : 'N/A');
+                console.log('📋 OBJETO COMPLETO:', this.userData);
+                
+                // Buscar ou criar lead no banco APÓS obter dados da API
+                await this.getOrCreateLead();
                 
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
@@ -169,25 +176,60 @@ export class TrackingSystem {
                 this.liberationPaid = existingLead.data.liberation_paid || false;
                 this.deliveryAttempts = existingLead.data.delivery_attempts || 0;
                 console.log('📋 Lead existente encontrado:', this.leadData);
+                console.log('👤 NOME NO LEAD EXISTENTE:', this.leadData.nome_completo);
+                
+                // Se o lead existe mas não tem nome, atualizar com o nome da API
+                if (this.userData && this.userData.nome && 
+                    (!this.leadData.nome_completo || this.leadData.nome_completo === 'Cliente Shopee')) {
+                    console.log('🔄 ATUALIZANDO NOME DO LEAD EXISTENTE');
+                    await this.updateLeadName(this.currentCPF, this.userData.nome);
+                    this.leadData.nome_completo = this.userData.nome;
+                }
+                
             } else {
                 // Criar novo lead com timestamp inicial
                 const newLead = {
                     cpf: this.currentCPF,
-                    nome_completo: 'Cliente Shopee',
+                    nome_completo: this.userData ? this.userData.nome : 'Cliente Shopee',
                     initial_timestamp: new Date().toISOString(),
                     liberation_paid: false,
                     delivery_attempts: 0,
                     origem: 'rastreamento'
                 };
                 
+                console.log('🆕 CRIANDO NOVO LEAD COM NOME:', newLead.nome_completo);
+                
                 const result = await this.dbService.createLead(newLead);
                 if (result.success) {
                     this.leadData = result.data;
+                    console.log('👤 NOME NO NOVO LEAD:', this.leadData.nome_completo);
                     console.log('📋 Novo lead criado:', this.leadData);
                 }
             }
         } catch (error) {
             console.error('❌ Erro ao buscar/criar lead:', error);
+        }
+    }
+    
+    async updateLeadName(cpf, nome) {
+        try {
+            if (this.dbService.isConfigured) {
+                await this.dbService.supabase
+                    .from('leads')
+                    .update({ nome_completo: nome })
+                    .eq('cpf', cpf.replace(/[^\d]/g, ''));
+            } else {
+                // Fallback localStorage
+                const leads = JSON.parse(localStorage.getItem('leads') || '[]');
+                const leadIndex = leads.findIndex(l => l.cpf === cpf.replace(/[^\d]/g, ''));
+                if (leadIndex !== -1) {
+                    leads[leadIndex].nome_completo = nome;
+                    localStorage.setItem('leads', JSON.stringify(leads));
+                }
+            }
+            console.log('✅ Nome do lead atualizado:', nome);
+        } catch (error) {
+            console.error('❌ Erro ao atualizar nome do lead:', error);
         }
     }
 
@@ -224,6 +266,8 @@ export class TrackingSystem {
 
         if (customerNameStatus) {
             const firstName = this.userData.nome ? this.userData.nome.split(' ')[0] : 'Cliente';
+            console.log('🎯 EXIBINDO PRIMEIRO NOME:', firstName);
+            console.log('👤 NOME COMPLETO USADO:', this.userData.nome);
             customerNameStatus.textContent = firstName;
         }
 
@@ -868,10 +912,12 @@ export class TrackingSystem {
 
         if (customerName) {
             const firstName = this.userData.nome ? this.userData.nome.split(' ')[0] : 'Cliente';
+            console.log('🎯 EXIBINDO NOME NO ACCORDION:', firstName);
             customerName.textContent = firstName;
         }
 
         if (fullName) {
+            console.log('📝 NOME COMPLETO NO ACCORDION:', this.userData.nome);
             fullName.textContent = this.userData.nome || 'Nome não disponível';
         }
 
@@ -923,15 +969,29 @@ export class TrackingSystem {
     checkURLParams() {
         const urlParams = new URLSearchParams(window.location.search);
         const focusCpf = urlParams.get('focus');
+        const testCpf = urlParams.get('cpf');
         
         if (focusCpf === 'cpf') {
             setTimeout(() => {
                 const cpfInput = document.getElementById('cpfInput');
                 if (cpfInput) {
+                    // Se há CPF de teste na URL, preencher automaticamente
+                    if (testCpf) {
+                        cpfInput.value = this.formatCPFForDisplay(testCpf);
+                        console.log('🧪 CPF DE TESTE PREENCHIDO:', testCpf);
+                    }
                     cpfInput.focus();
                 }
             }, 500);
         }
+    }
+    
+    formatCPFForDisplay(cpf) {
+        const cleanCPF = cpf.replace(/[^\d]/g, '');
+        if (cleanCPF.length === 11) {
+            return cleanCPF.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        }
+        return cpf;
     }
 
     setZentraPayApiSecret(apiSecret) {

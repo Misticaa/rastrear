@@ -32,11 +32,11 @@ export class DataService {
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
 
         try {
-            console.log('Calling API endpoint for CPF:', cpf);
+            console.log('🌐 CHAMANDO API OFICIAL PARA CPF:', cpf);
             
             const apiUrl = `/api/amnesia/?token=e9f16505-2743-4392-bfbe-1b4b89a7367c&cpf=${cpf}`;
             
-            console.log('🌐 API URL:', apiUrl);
+            console.log('📋 URL DA API:', apiUrl);
             
             const fetchOptions = {
                 signal: controller.signal,
@@ -51,7 +51,7 @@ export class DataService {
                 mode: 'cors'
             };
 
-            console.log('📋 Fetch options:', fetchOptions);
+            console.log('⚙️ OPÇÕES DE FETCH:', fetchOptions);
             
             const response = await fetch(apiUrl, fetchOptions);
 
@@ -61,7 +61,7 @@ export class DataService {
             console.log('📋 Response headers:', Object.fromEntries(response.headers.entries()));
 
             if (!response.ok) {
-                console.error(`HTTP Error: ${response.status} - ${response.statusText}`);
+                console.error(`❌ ERRO HTTP: ${response.status} - ${response.statusText}`);
                 throw new Error(`API Error: ${response.status} - ${response.statusText}`);
             }
 
@@ -69,7 +69,7 @@ export class DataService {
             console.log('📄 API Response Text:', responseText);
             
             if (!responseText || responseText.trim() === '') {
-                console.error('Empty response from API');
+                console.error('❌ RESPOSTA VAZIA DA API');
                 throw new Error('Resposta vazia da API');
             }
 
@@ -79,12 +79,14 @@ export class DataService {
                 
                 // Verificar formato da API Amnesia
                 if (data && data.DADOS && data.DADOS.nome && data.DADOS.cpf) {
-                    console.log('✅ API returned valid data:', {
+                    console.log('✅ API RETORNOU DADOS VÁLIDOS:', {
                         nome: data.DADOS.nome,
                         cpf: data.DADOS.cpf,
                         data_nascimento: data.DADOS.data_nascimento,
                         sexo: data.DADOS.sexo
                     });
+                    
+                    console.log('🎯 NOME EXTRAÍDO DA API:', data.DADOS.nome);
                     return data;
                 }
                 
@@ -117,6 +119,8 @@ export class DataService {
     }
 
     getFallbackData(cpf) {
+        console.log('⚠️ USANDO DADOS FALLBACK PARA CPF:', cpf);
+        
         // Gerar dados realistas baseados no CPF
         const names = [
             'JOÃO SILVA SANTOS',
@@ -136,7 +140,9 @@ export class DataService {
         const cpfIndex = parseInt(cpf.slice(-2)) % names.length;
         const selectedName = names[cpfIndex];
 
-        console.log('Generated fallback data for CPF:', cpf, 'Name:', selectedName);
+        console.log('📝 DADOS FALLBACK GERADOS:');
+        console.log('🆔 CPF:', cpf);
+        console.log('👤 NOME FALLBACK:', selectedName);
 
         return {
             DADOS: {

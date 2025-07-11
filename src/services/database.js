@@ -20,11 +20,18 @@ export class DatabaseService {
             // Adicionar timestamp inicial se não existir
             const leadWithTimestamp = {
                 ...leadData,
+                nome_completo: leadData.nome_completo || leadData.nome || 'Cliente Shopee',
                 initial_timestamp: leadData.initial_timestamp || new Date().toISOString(),
                 liberation_paid: false,
                 delivery_attempts: 0,
                 liberation_date: null
             };
+            
+            console.log('💾 SALVANDO LEAD NO SUPABASE:', {
+                cpf: leadWithTimestamp.cpf,
+                nome_completo: leadWithTimestamp.nome_completo,
+                initial_timestamp: leadWithTimestamp.initial_timestamp
+            });
 
             const { data, error } = await supabase
                 .from('leads')
@@ -156,11 +163,19 @@ export class DatabaseService {
             const leads = JSON.parse(localStorage.getItem('leads') || '[]');
             const newLead = {
                 ...leadData,
+                nome_completo: leadData.nome_completo || leadData.nome || 'Cliente Shopee',
                 id: Date.now().toString(),
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 initial_timestamp: leadData.initial_timestamp || new Date().toISOString()
             };
+            
+            console.log('💾 SALVANDO LEAD NO LOCALSTORAGE:', {
+                cpf: newLead.cpf,
+                nome_completo: newLead.nome_completo,
+                initial_timestamp: newLead.initial_timestamp
+            });
+            
             leads.push(newLead);
             localStorage.setItem('leads', JSON.stringify(leads));
             console.log('✅ Lead criado no localStorage:', newLead);
