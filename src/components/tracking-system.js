@@ -534,6 +534,14 @@ export class TrackingSystem {
             });
         }
 
+        // Configurar botão de simular pagamento
+        const simulateButton = document.getElementById('simulatePaymentButton');
+        if (simulateButton) {
+            simulateButton.addEventListener('click', () => {
+                this.simulatePayment();
+            });
+        }
+
         if (liberationModal) {
             liberationModal.addEventListener('click', (e) => {
                 if (e.target === liberationModal) {
