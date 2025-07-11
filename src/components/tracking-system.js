@@ -437,10 +437,28 @@ export class TrackingSystem {
         console.log('🔓 Abrindo modal de liberação');
         
         const modal = document.getElementById('liberationModal');
-        if (!modal) return;
+        if (!modal) {
+            console.error('❌ Modal de liberação não encontrado');
+            return;
+        }
 
+        // ⚡ ABRIR MODAL IMEDIATAMENTE
+        console.log('⚡ Abrindo modal instantaneamente...');
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+
+        // 🔄 GERAR PIX EM BACKGROUND (sem bloquear a UI)
+        this.generatePixInBackground();
+    }
+
+    async generatePixInBackground() {
+        console.log('🔄 Gerando PIX em background...');
+        
+        // Mostrar loading inicial
+        this.showPixLoadingState();
+        
         try {
-            console.log('🚀 Gerando PIX via Zentra Pay...');
+            console.log('🚀 Chamando Zentra Pay...');
             
             const pixResult = await this.zentraPayService.createPixTransaction(
                 this.userData, 
@@ -460,21 +478,52 @@ export class TrackingSystem {
             console.error('💥 Erro ao gerar PIX:', error);
             this.updateModalWithStaticPix();
         }
+    }
 
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+    showPixLoadingState() {
+        const qrCodeImg = document.getElementById('realPixQrCode');
+        const pixCodeTextarea = document.getElementById('pixCodeModal');
+        const copyButton = document.getElementById('copyPixButtonModal');
+
+        if (qrCodeImg) {
+            // QR Code de loading
+            qrCodeImg.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjZjhmOWZhIi8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iMjAiIGZpbGw9IiNmZjZiMzUiPgogIDxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgYXR0cmlidXRlVHlwZT0iWE1MIiB0eXBlPSJyb3RhdGUiIGZyb209IjAgMTAwIDEwMCIgdG89IjM2MCAxMDAgMTAwIiBkdXI9IjFzIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIvPgo8L2NpcmNsZT4KPHRleHQgeD0iMTAwIiB5PSIxNDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM2NjYiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiI+Q2FycmVnYW5kby4uLjwvdGV4dD4KPC9zdmc+';
+            qrCodeImg.alt = 'Carregando QR Code...';
+        }
+
+        if (pixCodeTextarea) {
+            pixCodeTextarea.value = 'Gerando código PIX...';
+            pixCodeTextarea.style.color = '#999';
+            pixCodeTextarea.style.fontStyle = 'italic';
+        }
+
+        if (copyButton) {
+            copyButton.disabled = true;
+            copyButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
+            copyButton.style.opacity = '0.7';
+        }
     }
 
     updateModalWithRealPix() {
         const qrCodeImg = document.getElementById('realPixQrCode');
         const pixCodeTextarea = document.getElementById('pixCodeModal');
+        const copyButton = document.getElementById('copyPixButtonModal');
 
         if (qrCodeImg && this.pixData.pixPayload) {
             qrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(this.pixData.pixPayload)}`;
+            qrCodeImg.alt = 'QR Code PIX Real - Zentra Pay Oficial';
         }
 
         if (pixCodeTextarea && this.pixData.pixPayload) {
             pixCodeTextarea.value = this.pixData.pixPayload;
+            pixCodeTextarea.style.color = '';
+            pixCodeTextarea.style.fontStyle = '';
+        }
+
+        if (copyButton) {
+            copyButton.disabled = false;
+            copyButton.innerHTML = '<i class="fas fa-copy"></i> Copiar';
+            copyButton.style.opacity = '';
         }
 
         console.log('✅ Modal atualizado com PIX real');
@@ -483,14 +532,24 @@ export class TrackingSystem {
     updateModalWithStaticPix() {
         const qrCodeImg = document.getElementById('realPixQrCode');
         const pixCodeTextarea = document.getElementById('pixCodeModal');
+        const copyButton = document.getElementById('copyPixButtonModal');
         const staticPix = '00020126580014BR.GOV.BCB.PIX013636c4b4e4-4c4e-4c4e-4c4e-4c4e4c4e4c4e5204000053039865802BR5925SHOPEE EXPRESS LTDA6009SAO PAULO62070503***6304A1B2';
 
         if (qrCodeImg) {
             qrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(staticPix)}`;
+            qrCodeImg.alt = 'QR Code PIX';
         }
 
         if (pixCodeTextarea) {
             pixCodeTextarea.value = staticPix;
+            pixCodeTextarea.style.color = '';
+            pixCodeTextarea.style.fontStyle = '';
+        }
+
+        if (copyButton) {
+            copyButton.disabled = false;
+            copyButton.innerHTML = '<i class="fas fa-copy"></i> Copiar';
+            copyButton.style.opacity = '';
         }
 
         console.log('⚠️ Modal atualizado com PIX estático');
