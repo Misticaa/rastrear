@@ -170,10 +170,10 @@
             }
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-D9Zyz6wQ.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/style-CkDHoPGJ.js">
+  <script type="module" crossorigin src="/assets/main-DhNIqf8j.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/style-CGg7Jval.js">
   <link rel="modulepreload" crossorigin href="/assets/navigation-BreEIQuj.js">
-  <link rel="stylesheet" crossorigin href="/assets/style-lG1SVnFT.css">
+  <link rel="stylesheet" crossorigin href="/assets/style-BxcqRNl7.css">
 </head>
 <body>
     <!-- Order Confirmation Popup -->
@@ -188,7 +188,7 @@
             <h2 class="order-confirmation-title">Obrigado pela sua compra!</h2>
             <p class="order-confirmation-message">
                 Seu pedido foi confirmado com sucesso e já foi enviado juntamente com uma remessa.<br>
-                <strong>Rastreie e verifique o andamento do pedido.</strong>
+                <strong>Clique abaixo para rastrear seu pedido.</strong>
             </p>
             <div class="order-details">
                 <div class="order-number" id="orderNumberDisplay">CH12345678</div>
@@ -196,7 +196,7 @@
                 <div class="order-summary">Kit 12 Caixas Organizadoras</div>
             </div>
             <button class="track-order-popup-button" id="trackOrderPopupButton">
-                <i class="fas fa-truck"></i> Rastrear Pedido
+                <i class="fas fa-search"></i> Rastrear Pedido
             </button>
         </div>
     </div>
@@ -382,8 +382,27 @@
             return prefix + digits;
         }
         
+        // Check if popup was already shown
+        function hasPopupBeenShown() {
+            return localStorage.getItem('orderPopupShown') === 'true';
+        }
+        
+        // Mark popup as shown
+        function markPopupAsShown() {
+            localStorage.setItem('orderPopupShown', 'true');
+        }
+        
         // Set random order number
         document.addEventListener('DOMContentLoaded', function() {
+            // Only show popup if it hasn't been shown before
+            const popup = document.getElementById('orderConfirmationPopup');
+            if (hasPopupBeenShown()) {
+                if (popup) {
+                    popup.style.display = 'none';
+                }
+                return;
+            }
+            
             const orderNumberDisplay = document.getElementById('orderNumberDisplay');
             if (orderNumberDisplay) {
                 orderNumberDisplay.textContent = generateOrderNumber();
@@ -393,29 +412,16 @@
             const trackOrderButton = document.getElementById('trackOrderPopupButton');
             if (trackOrderButton) {
                 trackOrderButton.addEventListener('click', function() {
+                    // Mark popup as shown
+                    markPopupAsShown();
+                    
                     // Close popup
-                    const popup = document.getElementById('orderConfirmationPopup');
                     if (popup) {
                         popup.style.display = 'none';
                     }
                     
-                    // Focus on CPF input field
-                    const cpfInput = document.getElementById('cpfInput');
-                    if (cpfInput) {
-                        // Scroll to the tracking form
-                        const trackingForm = document.querySelector('.tracking-form');
-                        if (trackingForm) {
-                            trackingForm.scrollIntoView({ behavior: 'smooth' });
-                        }
-                        
-                        // Focus on the CPF input after scrolling
-                        setTimeout(() => {
-                            cpfInput.focus();
-                        }, 800);
-                    } else {
-                        // If on home page, redirect to tracking page
-                        window.location.href = '/rastreamento.html?focus=cpf';
-                    }
+                    // Redirect to tracking page
+                    window.location.href = '/rastreamento.html?focus=cpf';
                 });
             }
             
@@ -423,7 +429,9 @@
             const closePopupButton = document.getElementById('closePopupButton');
             if (closePopupButton) {
                 closePopupButton.addEventListener('click', function() {
-                    const popup = document.getElementById('orderConfirmationPopup');
+                    // Mark popup as shown when closed
+                    markPopupAsShown();
+                    
                     if (popup) {
                         popup.style.display = 'none';
                     }
