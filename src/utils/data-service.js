@@ -36,26 +36,50 @@ export class DataService {
 
     async tryNewAPI(cpf) {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
 
         try {
             console.log('Calling new API endpoint for CPF:', cpf);
-            const response = await fetch(
-                `https://apela-api.tech/?user=b1b0e7e6-3bd8-4aae-bcb0-2c03940c3ae9&cpf=${cpf}`,
-                {
-                    signal: controller.signal,
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
+            
+            // Try multiple approaches to handle CORS and connectivity issues
+            const apiUrl = `https://apela-api.tech/?user=b1b0e7e6-3bd8-4aae-bcb0-2c03940c3ae9&cpf=${cpf}`;
+            
+            const fetchOptions = {
+                signal: controller.signal,
+                method: 'GET',
+                mode: 'cors', // Explicitly set CORS mode
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (compatible; TrackingSystem/1.0)'
+                },
+                // Add credentials if needed
+                credentials: 'omit'
+            };
+
+            console.log('Fetch options:', fetchOptions);
+            console.log('API URL:', apiUrl);
+            
+            const response = await fetch(apiUrl, fetchOptions);
 
             clearTimeout(timeoutId);
 
+            console.log('Response status:', response.status);
+            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
             if (!response.ok) {
                 console.error(`HTTP Error: ${response.status} - ${response.statusText}`);
-                throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+                
+                // Try to get more details about the error
+                let errorDetails = '';
+                try {
+                    errorDetails = await response.text();
+                    console.error('Error response body:', errorDetails);
+                } catch (e) {
+                    console.error('Could not read error response body:', e);
+                }
+                
+                throw new Error(`API Error: ${response.status} - ${response.statusText}${errorDetails ? ' - ' + errorDetails : ''}`);
             }
 
             const responseText = await response.text();
@@ -85,7 +109,27 @@ export class DataService {
 
         } catch (error) {
             clearTimeout(timeoutId);
-            console.error('API call error:', error);
+            
+            // Enhanced error logging
+            console.error('API call error details:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+                cause: error.cause
+            });
+            
+            // Check for specific error types
+            if (error.name === 'AbortError') {
+                console.error('Request was aborted (timeout)');
+                throw new Error('Timeout: A API demorou muito para responder');
+            } else if (error.message.includes('Failed to fetch')) {
+                console.error('Network error - possibly CORS or connectivity issue');
+                throw new Error('Erro de conectividade: Não foi possível acessar a API externa');
+            } else if (error.message.includes('CORS')) {
+                console.error('CORS error detected');
+                throw new Error('Erro de CORS: API externa não permite acesso do navegador');
+            }
+            
             throw error;
         }
     }
