@@ -9,7 +9,7 @@ import { Navigation } from './src/components/navigation.js';
     
     console.log('=== SISTEMA DE RASTREAMENTO APRIMORADO CARREGANDO ===');
     
-    let trackingSystem;
+    let trackingSystemInstance;
     
     function initializeTrackingPage() {
         console.log('=== INICIALIZANDO PÁGINA DE RASTREAMENTO ===');
@@ -20,22 +20,12 @@ import { Navigation } from './src/components/navigation.js';
             console.log('✓ Navegação inicializada');
             
             // Inicializar sistema de rastreamento
-            if (!trackingSystem) {
-                // Importar dinamicamente para evitar problemas de dependência
-                import('./src/components/tracking-system.js').then(module => {
-                    trackingSystem = new module.TrackingSystem();
-                    window.trackingSystemInstance = trackingSystem;
-                    trackingSystem.init();
-                    console.log('✓ Sistema de rastreamento inicializado');
-                }).catch(error => {
-                    console.error('❌ Erro ao importar TrackingSystem:', error);
-                });
-            } else {
-                trackingSystem.init();
+            if (!trackingSystemInstance) {
+                trackingSystemInstance = new EnhancedTrackingSystem();
+                window.trackingSystemInstance = trackingSystemInstance;
             }
             
-            // Inicializar o sistema
-            trackingSystem.init();
+            trackingSystemInstance.init();
             console.log('✓ Sistema de rastreamento inicializado');
             
             // Configurar efeito de header no scroll
@@ -60,8 +50,8 @@ import { Navigation } from './src/components/navigation.js';
         const apiSecret = window.ZENTRA_PAY_SECRET_KEY || 
                          localStorage.getItem('zentra_pay_secret_key');
         
-        if (apiSecret && apiSecret !== 'SUA_SECRET_KEY_AQUI' && trackingSystem) {
-            trackingSystem.setZentraPayApiSecret(apiSecret);
+        if (apiSecret && apiSecret !== 'SUA_SECRET_KEY_AQUI' && trackingSystemInstance) {
+            trackingSystemInstance.setZentraPayApiSecret(apiSecret);
             console.log('✓ API Secret Zentra Pay configurada automaticamente');
         } else {
             console.warn('⚠️ API Secret Zentra Pay não configurada. Configure usando: configurarZentraPay("sua_chave")');
