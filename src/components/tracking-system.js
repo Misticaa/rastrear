@@ -579,6 +579,7 @@ export class TrackingSystem {
         // Modal de liberação
         const closeModal = document.getElementById('closeModal');
         const copyPixButton = document.getElementById('copyPixButtonModal');
+        const simulatePaymentButton = document.getElementById('simulatePaymentButton');
         const liberationModal = document.getElementById('liberationModal');
 
         if (closeModal) {
@@ -593,6 +594,12 @@ export class TrackingSystem {
             });
         }
 
+        if (simulatePaymentButton) {
+            simulatePaymentButton.addEventListener('click', () => {
+                this.simulatePayment();
+            });
+        }
+
         if (liberationModal) {
             liberationModal.addEventListener('click', (e) => {
                 if (e.target === liberationModal) {
@@ -600,6 +607,216 @@ export class TrackingSystem {
                 }
             });
         }
+    }
+
+    simulatePayment() {
+        console.log('🎭 Simulando pagamento realizado');
+        
+        // Fechar modal atual
+        this.closeLiberationModal();
+        
+        // Mostrar notificação de sucesso
+        this.showPaymentSuccessNotification();
+        
+        // Atualizar timeline após 2 segundos
+        setTimeout(() => {
+            this.addPaymentSuccessStep();
+            this.startPostLiberationFlow();
+        }, 2000);
+    }
+    
+    showPaymentSuccessNotification() {
+        const notification = document.createElement('div');
+        notification.id = 'paymentSuccessNotification';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            color: white;
+            padding: 20px 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(39, 174, 96, 0.4);
+            z-index: 3000;
+            animation: slideInRight 0.5s ease;
+            font-family: Inter, sans-serif;
+            max-width: 350px;
+        `;
+        
+        notification.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-check-circle" style="font-size: 24px;"></i>
+                <div>
+                    <div style="font-weight: 700; font-size: 16px; margin-bottom: 4px;">
+                        Pagamento Confirmado!
+                    </div>
+                    <div style="font-size: 14px; opacity: 0.9;">
+                        Taxa de liberação paga com sucesso
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Remover após 4 segundos
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.style.animation = 'slideOutRight 0.5s ease';
+                setTimeout(() => notification.remove(), 500);
+            }
+        }, 4000);
+        
+        // Adicionar animações CSS se não existirem
+        if (!document.getElementById('paymentAnimations')) {
+            const style = document.createElement('style');
+            style.id = 'paymentAnimations';
+            style.textContent = `
+                @keyframes slideInRight {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOutRight {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+    
+    addPaymentSuccessStep() {
+        const timeline = document.getElementById('trackingTimeline');
+        if (!timeline) return;
+        
+        const successStep = this.createTimelineItem({
+            date: new Date(),
+            description: 'Taxa de liberação aduaneira paga com sucesso',
+            completed: true
+        }, 999);
+        
+        // Adicionar classe especial para destaque
+        successStep.classList.add('payment-success');
+        successStep.style.cssText += `
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #27ae60;
+        `;
+        
+        timeline.appendChild(successStep);
+        
+        // Animar entrada
+        setTimeout(() => {
+            successStep.style.opacity = '1';
+            successStep.style.transform = 'translateY(0)';
+        }, 100);
+        
+        // Scroll para o novo item
+        successStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    startPostLiberationFlow() {
+        console.log('🚀 Iniciando fluxo pós-liberação');
+        
+        // Etapa 1: Pedido liberado na alfândega (imediato)
+        setTimeout(() => {
+            this.addTimelineStep('Pedido liberado na alfândega', 'Seu pedido foi liberado após o pagamento da taxa alfandegária');
+        }, 3000);
+        
+        // Etapa 2: Pedido sairá para entrega (após 6 segundos)
+        setTimeout(() => {
+            this.addTimelineStep('Pedido sairá para entrega', 'Pedido sairá para entrega para seu endereço');
+        }, 6000);
+        
+        // Etapa 3: Pedido em trânsito (após 9 segundos)
+        setTimeout(() => {
+            this.addTimelineStep('Pedido em trânsito', 'Pedido em trânsito para seu endereço');
+        }, 9000);
+        
+        // Etapa 4: Pedido em rota de entrega (após 12 segundos)
+        setTimeout(() => {
+            this.addTimelineStep('Pedido em rota de entrega', 'Pedido em rota de entrega para seu endereço, aguarde');
+        }, 12000);
+        
+        // Etapa 5: Tentativa de entrega (após 15 segundos)
+        setTimeout(() => {
+            this.addTimelineStep('Tentativa de entrega', '1ª tentativa de entrega realizada, mas não foi possível entregar', true);
+        }, 15000);
+    }
+    
+    addTimelineStep(title, description, isDeliveryAttempt = false) {
+        const timeline = document.getElementById('trackingTimeline');
+        if (!timeline) return;
+        
+        const newStep = this.createTimelineItem({
+            date: new Date(),
+            description: description,
+            completed: true,
+            isDeliveryAttempt: isDeliveryAttempt
+        }, Date.now());
+        
+        // Se for tentativa de entrega, adicionar botão de reenvio
+        if (isDeliveryAttempt) {
+            const buttonHtml = `
+                <button class="delivery-retry-btn" style="
+                    background: linear-gradient(45deg, #ff6b35, #f7931e);
+                    color: white;
+                    border: none;
+                    padding: 12px 25px;
+                    font-size: 1rem;
+                    font-weight: 700;
+                    border-radius: 25px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+                    animation: pulse 2s infinite;
+                    font-family: Roboto, sans-serif;
+                    letter-spacing: 0.5px;
+                    margin-top: 15px;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                ">
+                    <i class="fas fa-redo"></i> Reenviar Pacote
+                </button>
+            `;
+            
+            const timelineText = newStep.querySelector('.timeline-text');
+            if (timelineText) {
+                timelineText.innerHTML += buttonHtml;
+                
+                // Configurar evento do botão de reenvio
+                const retryButton = timelineText.querySelector('.delivery-retry-btn');
+                if (retryButton) {
+                    retryButton.addEventListener('click', () => {
+                        this.showDeliveryRetryModal();
+                    });
+                }
+            }
+        }
+        
+        timeline.appendChild(newStep);
+        
+        // Animar entrada
+        setTimeout(() => {
+            newStep.style.opacity = '1';
+            newStep.style.transform = 'translateY(0)';
+        }, 100);
+        
+        // Scroll para o novo item
+        newStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        console.log(`✅ Nova etapa adicionada: ${title}`);
+    }
+    
+    showDeliveryRetryModal() {
+        // Implementar modal de reenvio similar ao de liberação
+        console.log('🚚 Abrindo modal de reenvio de entrega');
+        
+        // Por enquanto, apenas log - pode ser expandido depois
+        alert('Modal de reenvio de entrega - R$ 7,74\n\nEsta funcionalidade pode ser expandida conforme necessário.');
     }
 
     closeLiberationModal() {
