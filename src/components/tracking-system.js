@@ -483,6 +483,17 @@ export class TrackingSystem {
             this.updateTimelineDisplay();
             this.saveTimelineToDatabase();
         }
+        
+        // Verificar se chegou na alfândega (etapa 11)
+        const completedSteps = this.trackingData.steps.filter(step => step.completed).length;
+        if (completedSteps >= 11) {
+            this.hideTestControls();
+            
+            // Garantir que o botão de liberação seja destacado
+            setTimeout(() => {
+                this.highlightLiberationButton();
+            }, 500);
+        }
     }
 
     updateTimelineDisplay() {
@@ -835,19 +846,68 @@ export class TrackingSystem {
     }
 
     highlightLiberationButton() {
-        const liberationButton = document.querySelector('.liberation-button-timeline');
+        console.log('🔍 Procurando botão de liberação para destacar...');
+        
+        // Procurar por diferentes seletores do botão de liberação
+        const selectors = [
+            '.liberation-button-timeline',
+            '[data-liberation-button]',
+            'button:contains("LIBERAR")',
+            'button:contains("Liberar")'
+        ];
+        
+        let liberationButton = null;
+        
+        for (const selector of selectors) {
+            const buttons = document.querySelectorAll(selector);
+            if (buttons.length > 0) {
+                liberationButton = buttons[buttons.length - 1]; // Pegar o último
+                break;
+            }
+        }
+        
+        // Se não encontrou, procurar por texto
+        if (!liberationButton) {
+            const allButtons = document.querySelectorAll('button');
+            for (const button of allButtons) {
+                if (button.textContent && button.textContent.toLowerCase().includes('liberar')) {
+                    liberationButton = button;
+                    break;
+                }
+            }
+        }
+        
         if (liberationButton) {
-            UIHelpers.scrollToElement(liberationButton, window.innerHeight / 2);
+            console.log('✅ Botão de liberação encontrado:', liberationButton);
             
+            // Destacar o botão com animação
+            liberationButton.style.animation = 'pulse 1.5s infinite';
+            liberationButton.style.boxShadow = '0 0 20px rgba(255, 107, 53, 0.8)';
+            liberationButton.style.transform = 'scale(1.05)';
+            
+            // Scroll para o botão
+            liberationButton.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+            
+            // Configurar evento de clique se não estiver configurado
+            if (!liberationButton.hasAttribute('data-configured')) {
+                liberationButton.addEventListener('click', () => {
+                    this.showLiberationModal();
+                });
+                liberationButton.setAttribute('data-configured', 'true');
+                console.log('✅ Evento de clique configurado no botão');
+            }
+            
+            console.log('✅ Botão de liberação destacado e configurado');
+        } else {
+            console.warn('⚠️ Botão de liberação não encontrado');
+            
+            // Tentar novamente após um delay
             setTimeout(() => {
-                liberationButton.style.animation = 'pulse 2s infinite, glow 2s ease-in-out';
-                liberationButton.style.boxShadow = '0 0 20px rgba(255, 107, 53, 0.8)';
-                
-                setTimeout(() => {
-                    liberationButton.style.animation = 'pulse 2s infinite';
-                    liberationButton.style.boxShadow = '0 4px 15px rgba(255, 107, 53, 0.4)';
-                }, 6000);
-            }, 500);
+                this.highlightLiberationButton();
+            }, 1000);
         }
     }
 
@@ -1432,6 +1492,347 @@ export class TrackingSystem {
             }
         } catch (error) {
             console.error('Erro ao limpar dados antigos:', error);
+        }
+    }
+
+    // Método para garantir que o modal de liberação funcione
+    showLiberationModal() {
+        console.log('🚀 Abrindo modal de liberação aduaneira...');
+        
+        // Verificar se o modal já existe
+        let modal = document.getElementById('liberationModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            console.log('✅ Modal de liberação exibido');
+            return;
+        }
+        
+        // Se não existe, criar o modal
+        this.createLiberationModal();
+    }
+
+    // Método para criar o modal de liberação se não existir
+    createLiberationModal() {
+        console.log('🔨 Criando modal de liberação aduaneira...');
+        
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'liberationModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease;
+        `;
+
+        modal.innerHTML = `
+            <div class="professional-modal-container">
+                <div class="professional-modal-header">
+                    <h2 class="professional-modal-title">Liberação Aduaneira Necessária</h2>
+                    <button class="professional-modal-close" id="closeModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="professional-modal-content">
+                    <div class="liberation-explanation">
+                        <p class="liberation-subtitle">
+                            Seu pedido está retido na alfândega e precisa ser liberado para continuar o processo de entrega. A taxa única é de R$ 26,34.
+                        </p>
+                    </div>
+
+                    <div class="professional-fee-display">
+                        <div class="fee-info">
+                            <span class="fee-label">Taxa de Liberação Aduaneira</span>
+                            <span class="fee-amount">R$ 26,34</span>
+                        </div>
+                    </div>
+
+                    <div class="professional-pix-section">
+                        <h3 class="pix-section-title">Pagamento via Pix</h3>
+                        
+                        <div class="pix-content-grid">
+                            <div class="qr-code-section">
+                                <div class="qr-code-container">
+                                    <img id="realPixQrCode" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=00020126580014BR.GOV.BCB.PIX013636c4b4e4-4c4e-4c4e-4c4e-4c4e4c4e4c4e5204000053039865802BR5925SHOPEE EXPRESS LTDA6009SAO PAULO62070503***6304A1B2" alt="QR Code PIX" class="professional-qr-code">
+                                </div>
+                            </div>
+                            
+                            <div class="pix-copy-section">
+                                <label class="pix-copy-label">PIX Copia e Cola</label>
+                                <div class="professional-copy-container">
+                                    <textarea id="pixCodeModal" class="professional-pix-input" readonly>00020126580014BR.GOV.BCB.PIX013636c4b4e4-4c4e-4c4e-4c4e-4c4e4c4e4c4e5204000053039865802BR5925SHOPEE EXPRESS LTDA6009SAO PAULO62070503***6304A1B2</textarea>
+                                    <button class="professional-copy-button" id="copyPixButtonModal">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="professional-payment-steps">
+                            <h4 class="steps-title">Como realizar o pagamento:</h4>
+                            <div class="payment-steps-grid">
+                                <div class="payment-step">
+                                    <div class="step-number">1</div>
+                                    <div class="step-content">
+                                        <i class="fas fa-mobile-alt step-icon"></i>
+                                        <span class="step-text">Acesse seu app do banco</span>
+                                    </div>
+                                </div>
+                                <div class="payment-step">
+                                    <div class="step-number">2</div>
+                                    <div class="step-content">
+                                        <i class="fas fa-qrcode step-icon"></i>
+                                        <span class="step-text">Cole o código Pix ou escaneie o QR Code</span>
+                                    </div>
+                                </div>
+                                <div class="payment-step">
+                                    <div class="step-number">3</div>
+                                    <div class="step-content">
+                                        <i class="fas fa-check step-icon"></i>
+                                        <span class="step-text">Confirme o pagamento</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botão de teste para simular pagamento -->
+                    <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                        <button id="simulatePaymentBtn" style="background: #27ae60; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            🧪 Simular Pagamento (Teste)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        document.body.style.overflow = 'hidden';
+
+        // Configurar eventos do modal
+        this.setupLiberationModalEvents(modal);
+        
+        console.log('✅ Modal de liberação criado e exibido');
+    }
+
+    // Configurar eventos do modal de liberação
+    setupLiberationModalEvents(modal) {
+        // Botão fechar
+        const closeButton = modal.querySelector('#closeModal');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                this.closeLiberationModal();
+            });
+        }
+
+        // Botão copiar PIX
+        const copyButton = modal.querySelector('#copyPixButtonModal');
+        if (copyButton) {
+            copyButton.addEventListener('click', () => {
+                this.copyPixCode();
+            });
+        }
+
+        // Botão simular pagamento
+        const simulateButton = modal.querySelector('#simulatePaymentBtn');
+        if (simulateButton) {
+            simulateButton.addEventListener('click', () => {
+                this.simulatePayment();
+            });
+        }
+
+        // Fechar ao clicar fora
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.closeLiberationModal();
+            }
+        });
+    }
+
+    // Fechar modal de liberação
+    closeLiberationModal() {
+        const modal = document.getElementById('liberationModal');
+        if (modal) {
+            modal.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                if (modal.parentNode) {
+                    modal.remove();
+                }
+                document.body.style.overflow = 'auto';
+            }, 300);
+        }
+    }
+
+    // Copiar código PIX
+    copyPixCode() {
+        const pixInput = document.getElementById('pixCodeModal');
+        const copyButton = document.getElementById('copyPixButtonModal');
+        
+        if (!pixInput || !copyButton) return;
+
+        try {
+            pixInput.select();
+            pixInput.setSelectionRange(0, 99999);
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(pixInput.value).then(() => {
+                    console.log('✅ PIX copiado:', pixInput.value.substring(0, 50) + '...');
+                    this.showCopySuccess(copyButton);
+                }).catch(() => {
+                    this.fallbackCopy(pixInput, copyButton);
+                });
+            } else {
+                this.fallbackCopy(pixInput, copyButton);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao copiar PIX:', error);
+        }
+    }
+
+    // Fallback para copiar
+    fallbackCopy(input, button) {
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                console.log('✅ PIX copiado via execCommand');
+                this.showCopySuccess(button);
+            }
+        } catch (error) {
+            console.error('❌ Fallback copy falhou:', error);
+        }
+    }
+
+    // Mostrar sucesso ao copiar
+    showCopySuccess(button) {
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+        button.style.background = '#27ae60';
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = '';
+        }, 2000);
+    }
+
+    // Simular pagamento da taxa alfandegária
+    simulatePayment() {
+        console.log('🧪 Simulando pagamento da taxa alfandegária...');
+        
+        // Fechar modal
+        this.closeLiberationModal();
+        
+        // Mostrar notificação de sucesso
+        this.showPaymentSuccessNotification();
+        
+        // Iniciar fluxo pós-pagamento após delay
+        setTimeout(() => {
+            this.startPostPaymentFlow();
+        }, 3000);
+    }
+
+    // Mostrar notificação de pagamento bem-sucedido
+    showPaymentSuccessNotification() {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(39, 174, 96, 0.3);
+            z-index: 3000;
+            animation: slideInRight 0.5s ease;
+            max-width: 350px;
+        `;
+
+        notification.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-check-circle" style="font-size: 1.5rem;"></i>
+                <div>
+                    <h4 style="margin: 0; font-size: 1.1rem; font-weight: 700;">Pagamento Confirmado!</h4>
+                    <p style="margin: 5px 0 0 0; font-size: 0.9rem; opacity: 0.9;">Taxa alfandegária paga com sucesso</p>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(notification);
+
+        // Remover após 5 segundos
+        setTimeout(() => {
+            notification.style.animation = 'slideOutRight 0.5s ease';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 500);
+        }, 5000);
+    }
+
+    // Iniciar fluxo pós-pagamento
+    startPostPaymentFlow() {
+        console.log('🚀 Iniciando fluxo pós-pagamento...');
+
+        // Importar e inicializar sistema pós-pagamento
+        import('../components/post-payment-system.js').then(({ PostPaymentSystem }) => {
+            if (!this.postPaymentSystem) {
+                this.postPaymentSystem = new PostPaymentSystem(this);
+            }
+            this.postPaymentSystem.startPostPaymentFlow();
+        }).catch(error => {
+            console.error('❌ Erro ao carregar sistema pós-pagamento:', error);
+            // Fallback simples
+            this.addSimplePostPaymentSteps();
+        });
+    }
+
+    // Fallback simples para pós-pagamento
+    addSimplePostPaymentSteps() {
+        const timeline = document.getElementById('trackingTimeline');
+        if (!timeline) return;
+
+        const steps = [
+            { title: 'Pedido liberado na alfândega', delay: 0 },
+            { title: 'Pedido sairá para entrega', delay: 30000 },
+            { title: 'Pedido em trânsito', delay: 60000 },
+            { title: 'Tentativa de entrega', delay: 90000 }
+        ];
+
+        steps.forEach((step, index) => {
+            setTimeout(() => {
+                const stepElement = this.createTimelineItem({
+                    title: step.title,
+                    description: step.title,
+                    date: new Date(),
+                    completed: true,
+                    isDeliveryAttempt: index === steps.length - 1
+                });
+                
+                timeline.appendChild(stepElement);
+                
+                setTimeout(() => {
+                    stepElement.style.opacity = '1';
+                    stepElement.style.transform = 'translateY(0)';
+                }, 100);
+            }, step.delay);
+        });
+    }
+
+    hideTestControls() {
+        const testControls = document.getElementById('testControls');
+        if (testControls) {
+            testControls.style.display = 'none';
         }
     }
 
