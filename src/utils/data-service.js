@@ -12,21 +12,14 @@ export class DataService {
         console.log('Fetching data for CPF:', cleanCPF);
 
         try {
-            // Try the new API first
-            const response = await this.tryNewAPI(cleanCPF);
+            // Try the API first
+            const response = await this.tryAPI(cleanCPF);
             if (response) {
-                console.log('Data obtained from new API:', response);
-                return {
-                    DADOS: {
-                        nome: response.nome,
-                        cpf: cleanCPF,
-                        nascimento: response.nascimento || this.generateBirthDate(cleanCPF),
-                        situacao: 'REGULAR'
-                    }
-                };
+                console.log('Data obtained from API:', response);
+                return response;
             }
         } catch (error) {
-            console.error('New API failed, using fallback:', error.message);
+            console.error('API failed, using fallback:', error.message);
         }
 
         // Use fallback data
@@ -34,21 +27,16 @@ export class DataService {
         return this.getFallbackData(cleanCPF);
     }
 
-    async tryNewAPI(cpf) {
+    async tryAPI(cpf) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
 
         try {
-            console.log('Calling new API endpoint for CPF:', cpf);
+            console.log('Calling API endpoint for CPF:', cpf);
             
-            // Use proxy em desenvolvimento, URL direta em produção
-            const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            const apiUrl = isDevelopment 
-                ? `/apela-api/?user=b1b0e7e6-3bd8-4aae-bcb0-2c03940c3ae9&cpf=${cpf}`
-                : `https://apela-api.tech/?user=b1b0e7e6-3bd8-4aae-bcb0-2c03940c3ae9&cpf=${cpf}`;
+            const apiUrl = `https://api.amnesiatecnologia.rocks/?token=e9f16505-2743-4392-bfbe-1b4b89a7367c&cpf=${cpf}`;
             
-            console.log('🌐 Environment:', isDevelopment ? 'Development' : 'Production');
-            console.log('🔗 API URL:', apiUrl);
+            console.log('🌐 API URL:', apiUrl);
             
             const fetchOptions = {
                 signal: controller.signal,
@@ -59,16 +47,9 @@ export class DataService {
                     'Cache-Control': 'no-cache'
                 },
                 credentials: 'omit',
-                cache: 'no-store'
+                cache: 'no-store',
+                mode: 'cors'
             };
-            
-            // Adicionar configurações CORS apenas em produção
-            if (!isDevelopment) {
-                fetchOptions.mode = 'cors';
-                fetchOptions.headers['User-Agent'] = 'Mozilla/5.0 (compatible; TrackingSystem/1.0)';
-            } else {
-                // Em desenvolvimento, deixar o navegador gerenciar o modo automaticamente
-            }
 
             console.log('📋 Fetch options:', fetchOptions);
             
@@ -81,21 +62,11 @@ export class DataService {
 
             if (!response.ok) {
                 console.error(`HTTP Error: ${response.status} - ${response.statusText}`);
-                
-                // Try to get more details about the error
-                let errorDetails = '';
-                try {
-                    errorDetails = await response.text();
-                    console.error('Error response body:', errorDetails);
-                } catch (e) {
-                    console.error('Could not read error response body:', e);
-                }
-                
-                throw new Error(`API Error: ${response.status} - ${response.statusText}${errorDetails ? ' - ' + errorDetails : ''}`);
+                throw new Error(`API Error: ${response.status} - ${response.statusText}`);
             }
 
             const responseText = await response.text();
-            console.log('📄 API Response Text (first 200 chars):', responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
+            console.log('📄 API Response Text:', responseText);
             
             if (!responseText || responseText.trim() === '') {
                 console.error('Empty response from API');
@@ -106,14 +77,13 @@ export class DataService {
                 const data = JSON.parse(responseText);
                 console.log('📊 Parsed API data:', data);
                 
-                // Verificar novo formato da API
-                if (data && data.status === 200 && data.nome && data.cpf) {
+                // Verificar formato da API Amnesia
+                if (data && data.DADOS && data.DADOS.nome && data.DADOS.cpf) {
                     console.log('✅ API returned valid data:', {
-                        nome: data.nome,
-                        cpf: data.cpf,
-                        nascimento: data.nascimento,
-                        sexo: data.sexo,
-                        requisicoes_restantes: data.requisicoes_restantes
+                        nome: data.DADOS.nome,
+                        cpf: data.DADOS.cpf,
+                        data_nascimento: data.DADOS.data_nascimento,
+                        sexo: data.DADOS.sexo
                     });
                     return data;
                 }
@@ -128,28 +98,18 @@ export class DataService {
         } catch (error) {
             clearTimeout(timeoutId);
             
-            // Enhanced error logging
             console.error('❌ API call error details:', {
                 name: error.name,
                 message: error.message,
-                stack: error.stack,
-                cause: error.cause,
-                timestamp: new Date().toISOString()
+                stack: error.stack
             });
             
-            // Check for specific error types
             if (error.name === 'AbortError') {
                 console.error('⏰ Request was aborted (timeout)');
                 throw new Error('Timeout: A API demorou muito para responder');
             } else if (error.message.includes('Failed to fetch')) {
                 console.error('🌐 Network error - possibly CORS or connectivity issue');
                 throw new Error('Erro de conectividade: Não foi possível acessar a API externa');
-            } else if (error.message.includes('CORS')) {
-                console.error('🚫 CORS error detected');
-                throw new Error('Erro de CORS: API externa não permite acesso do navegador');
-            } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-                console.error('🔌 DNS/Connection error detected');
-                throw new Error('Erro de DNS/Conexão: Servidor não encontrado ou recusou conexão');
             }
             
             throw error;
@@ -182,8 +142,8 @@ export class DataService {
             DADOS: {
                 nome: selectedName,
                 cpf: cpf,
-                nascimento: this.generateBirthDate(cpf),
-                situacao: 'REGULAR'
+                data_nascimento: this.generateBirthDate(cpf),
+                sexo: Math.random() > 0.5 ? 'M' : 'F'
             }
         };
     }
