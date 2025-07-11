@@ -5,24 +5,18 @@ import { DataService } from '../utils/data-service.js';
 import { CPFValidator } from '../utils/cpf-validator.js';
 import { TrackingGenerator } from '../utils/tracking-generator.js';
 import { ZentraPayService } from '../services/zentra-pay.js';
-import { RealTimeTrackingSystem } from '../utils/real-time-tracking.js';
-import { DatabaseService } from '../services/database.js';
 import { UIHelpers } from '../utils/ui-helpers.js';
 
 export class TrackingSystem {
     constructor() {
         this.dataService = new DataService();
-        this.dbService = new DatabaseService();
         this.zentraPayService = new ZentraPayService();
-        this.realTimeTracking = new RealTimeTrackingSystem();
         this.currentCPF = null;
         this.userData = null;
         this.trackingData = null;
         this.isInitialized = false;
         this.pixData = null;
         this.liberationPaid = false;
-        this.isTestCPF = false;
-        this.initialTimestamp = null;
     }
 
     async init() {
@@ -214,7 +208,6 @@ export class TrackingSystem {
         }
 
         this.currentCPF = CPFValidator.cleanCPF(cpf);
-        this.isTestCPF = this.currentCPF === '01101101105'; // CPF de teste: 011.011.011-05
         
         trackButton.disabled = true;
         trackButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rastreando...';
@@ -224,22 +217,8 @@ export class TrackingSystem {
         try {
             console.log('🔍 Buscando dados para CPF:', this.currentCPF);
             
-            let data;
-            if (this.isTestCPF) {
-                // Para CPF de teste, usar dados mock
-                data = {
-                    DADOS: {
-                        nome: 'João Silva Santos',
-                        cpf: this.currentCPF,
-                        data_nascimento: '15/03/1985',
-                        situacao: 'REGULAR'
-                    }
-                };
-                console.log('🧪 Usando dados de teste para CPF:', this.currentCPF);
-            } else {
-                data = await this.dataService.fetchCPFData(this.currentCPF);
-                console.log('📊 Dados recebidos:', data);
-            }
+            const data = await this.dataService.fetchCPFData(this.currentCPF);
+            console.log('📊 Dados recebidos:', data);
             
             if (data && data.DADOS) {
                 this.userData = {
@@ -251,15 +230,12 @@ export class TrackingSystem {
 
                 console.log('✅ Dados obtidos:', this.userData);
                 
-                // Salvar/obter timestamp inicial no banco
-                await this.handleInitialTimestamp();
-                
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
                 this.closeLoadingNotification();
                 
                 this.displayOrderDetails();
-                this.generateRealTimeTrackingData();
+                this.generateTrackingData();
                 this.displayTrackingResults();
                 
                 const orderDetails = document.getElementById('orderDetails');
@@ -310,60 +286,6 @@ export class TrackingSystem {
         }
     }
 
-    async handleInitialTimestamp() {
-        try {
-            // Buscar lead existente
-            const leadResult = await this.dbService.getLeadByCPF(this.currentCPF);
-            
-            if (leadResult.success && leadResult.data && leadResult.data.initial_timestamp) {
-                // Usar timestamp existente
-                this.initialTimestamp = new Date(leadResult.data.initial_timestamp);
-                console.log('📅 Usando timestamp existente:', this.initialTimestamp);
-            } else {
-                // Criar novo timestamp
-                this.initialTimestamp = new Date();
-                console.log('📅 Criando novo timestamp:', this.initialTimestamp);
-                
-                // Salvar no banco
-                const leadData = {
-                    nome_completo: this.userData.nome,
-                    cpf: this.currentCPF,
-                    initial_timestamp: this.initialTimestamp.toISOString(),
-                    etapa_atual: 1,
-                    status_pagamento: 'pendente'
-                };
-                
-                await this.dbService.createLead(leadData);
-            }
-        } catch (error) {
-            console.error('❌ Erro ao gerenciar timestamp:', error);
-            // Fallback para timestamp atual
-            this.initialTimestamp = new Date();
-        }
-    }
-
-    generateRealTimeTrackingData() {
-        if (!this.initialTimestamp) {
-            this.initialTimestamp = new Date();
-        }
-        
-        // Gerar timeline baseada em timestamps reais
-        const timeline = this.realTimeTracking.generateTimeline(this.initialTimestamp);
-        
-        this.trackingData = {
-            cpf: this.userData.cpf,
-            currentStep: this.realTimeTracking.getCurrentStatus(timeline),
-            steps: timeline,
-            liberationPaid: false,
-            liberationDate: null,
-            deliveryAttempts: 0,
-            lastUpdate: new Date().toISOString(),
-            initialTimestamp: this.initialTimestamp.toISOString()
-        };
-        
-        console.log('📊 Timeline gerada:', this.trackingData);
-    }
-
     generateTrackingData() {
         this.trackingData = TrackingGenerator.generateTrackingData(this.userData);
     }
@@ -388,11 +310,6 @@ export class TrackingSystem {
 
         if (trackingTimeline) {
             this.renderTimeline(trackingTimeline);
-        }
-
-        // Adicionar botões de simulação para CPF de teste
-        if (this.isTestCPF) {
-            this.addSimulationButtons();
         }
 
         setTimeout(() => {
@@ -447,268 +364,6 @@ export class TrackingSystem {
         `;
 
         return item;
-    }
-
-    addSimulationButtons() {
-        const trackingTimeline = document.getElementById('trackingTimeline');
-        if (!trackingTimeline) return;
-
-        // Verificar se já existem botões
-        if (trackingTimeline.querySelector('.simulation-controls')) return;
-
-        const simulationControls = document.createElement('div');
-        simulationControls.className = 'simulation-controls';
-        simulationControls.style.cssText = `
-            background: #f8f9fa;
-            border: 2px solid #007bff;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 20px 0;
-            text-align: center;
-        `;
-
-        simulationControls.innerHTML = `
-            <h4 style="color: #007bff; margin-bottom: 15px; font-size: 1.1rem;">
-                🧪 Controles de Simulação (CPF Teste)
-            </h4>
-            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                <button id="simulateNextStep" class="simulation-btn" style="
-                    background: #007bff;
-                    color: white;
-                    border: none;
-                    padding: 10px 20px;
-                    border-radius: 25px;
-                    cursor: pointer;
-                    font-weight: 600;
-                    transition: all 0.3s ease;
-                ">
-                    ⏭️ Próxima Etapa
-                </button>
-                <button id="simulatePayment" class="simulation-btn" style="
-                    background: #28a745;
-                    color: white;
-                    border: none;
-                    padding: 10px 20px;
-                    border-radius: 25px;
-                    cursor: pointer;
-                    font-weight: 600;
-                    transition: all 0.3s ease;
-                ">
-                    💳 Simular Pagamento
-                </button>
-                <button id="resetTimeline" class="simulation-btn" style="
-                    background: #dc3545;
-                    color: white;
-                    border: none;
-                    padding: 10px 20px;
-                    border-radius: 25px;
-                    cursor: pointer;
-                    font-weight: 600;
-                    transition: all 0.3s ease;
-                ">
-                    🔄 Reset Timeline
-                </button>
-            </div>
-        `;
-
-        trackingTimeline.appendChild(simulationControls);
-
-        // Configurar eventos dos botões
-        this.setupSimulationEvents();
-    }
-
-    setupSimulationEvents() {
-        const simulateNextBtn = document.getElementById('simulateNextStep');
-        const simulatePaymentBtn = document.getElementById('simulatePayment');
-        const resetTimelineBtn = document.getElementById('resetTimeline');
-
-        if (simulateNextBtn) {
-            simulateNextBtn.addEventListener('click', () => {
-                this.simulateNextStep();
-            });
-        }
-
-        if (simulatePaymentBtn) {
-            simulatePaymentBtn.addEventListener('click', () => {
-                this.simulatePayment();
-            });
-        }
-
-        if (resetTimelineBtn) {
-            resetTimelineBtn.addEventListener('click', () => {
-                this.resetTimeline();
-            });
-        }
-
-        // Adicionar hover effects
-        document.querySelectorAll('.simulation-btn').forEach(btn => {
-            btn.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-2px)';
-                this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
-            });
-            
-            btn.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0)';
-                this.style.boxShadow = 'none';
-            });
-        });
-    }
-
-    simulateNextStep() {
-        if (!this.trackingData || !this.trackingData.steps) return;
-
-        const hasNewStep = this.realTimeTracking.simulateNextStep(this.trackingData.steps);
-        
-        if (hasNewStep) {
-            console.log('🔄 Simulando próxima etapa...');
-            
-            // Atualizar status atual
-            this.trackingData.currentStep = this.realTimeTracking.getCurrentStatus(this.trackingData.steps);
-            
-            // Re-renderizar timeline
-            const trackingTimeline = document.getElementById('trackingTimeline');
-            if (trackingTimeline) {
-                // Remover controles de simulação temporariamente
-                const controls = trackingTimeline.querySelector('.simulation-controls');
-                if (controls) {
-                    controls.remove();
-                }
-                
-                this.renderTimeline(trackingTimeline);
-                this.addSimulationButtons();
-                
-                // Destacar botão de liberação se chegou na última etapa
-                const lastStep = this.trackingData.steps[this.trackingData.steps.length - 1];
-                if (lastStep && lastStep.completed) {
-                    setTimeout(() => {
-                        this.highlightLiberationButton();
-                    }, 500);
-                }
-            }
-            
-            // Atualizar status na interface
-            const currentStatus = document.getElementById('currentStatus');
-            if (currentStatus) {
-                currentStatus.textContent = this.trackingData.currentStep;
-            }
-        } else {
-            alert('✅ Todas as etapas já foram completadas!');
-        }
-    }
-
-    simulatePayment() {
-        console.log('💳 Simulando pagamento da taxa alfandegária...');
-        
-        // Marcar como pago
-        this.liberationPaid = true;
-        this.trackingData.liberationPaid = true;
-        this.trackingData.liberationDate = new Date().toISOString();
-        
-        // Fechar modal se estiver aberto
-        this.closeLiberationModal();
-        
-        // Mostrar notificação de sucesso
-        this.showPaymentSuccessNotification();
-        
-        // Atualizar no banco se possível
-        if (this.dbService && this.currentCPF) {
-            this.dbService.updatePaymentStatus(this.currentCPF, 'pago').catch(console.error);
-        }
-    }
-
-    resetTimeline() {
-        if (confirm('🔄 Tem certeza que deseja resetar a timeline? Isso irá reiniciar todas as etapas.')) {
-            console.log('🔄 Resetando timeline...');
-            
-            // Criar novo timestamp
-            this.initialTimestamp = new Date();
-            
-            // Regenerar dados
-            this.generateRealTimeTrackingData();
-            
-            // Re-renderizar
-            const trackingTimeline = document.getElementById('trackingTimeline');
-            if (trackingTimeline) {
-                const controls = trackingTimeline.querySelector('.simulation-controls');
-                if (controls) {
-                    controls.remove();
-                }
-                
-                this.renderTimeline(trackingTimeline);
-                this.addSimulationButtons();
-            }
-            
-            // Resetar status
-            this.liberationPaid = false;
-            
-            // Atualizar status na interface
-            const currentStatus = document.getElementById('currentStatus');
-            if (currentStatus) {
-                currentStatus.textContent = this.trackingData.currentStep;
-            }
-            
-            // Atualizar no banco
-            if (this.dbService && this.currentCPF) {
-                const leadData = {
-                    initial_timestamp: this.initialTimestamp.toISOString(),
-                    etapa_atual: 1,
-                    status_pagamento: 'pendente'
-                };
-                this.dbService.updateLeadStage(this.currentCPF, 1).catch(console.error);
-                this.dbService.updatePaymentStatus(this.currentCPF, 'pendente').catch(console.error);
-            }
-        }
-    }
-
-    showPaymentSuccessNotification() {
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #28a745;
-            color: white;
-            padding: 15px 25px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 3000;
-            font-weight: 600;
-            animation: slideInRight 0.3s ease;
-        `;
-        
-        notification.innerHTML = `
-            <i class="fas fa-check-circle" style="margin-right: 8px;"></i>
-            Pagamento simulado com sucesso!
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Remover após 3 segundos
-        setTimeout(() => {
-            notification.style.animation = 'slideOutRight 0.3s ease';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, 300);
-        }, 3000);
-        
-        // Adicionar CSS das animações se não existir
-        if (!document.getElementById('notificationAnimations')) {
-            const style = document.createElement('style');
-            style.id = 'notificationAnimations';
-            style.textContent = `
-                @keyframes slideInRight {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-                @keyframes slideOutRight {
-                    from { transform: translateX(0); opacity: 1; }
-                    to { transform: translateX(100%); opacity: 0; }
-                }
-            `;
-            document.head.appendChild(style);
-        }
     }
 
     highlightLiberationButton() {
