@@ -545,6 +545,13 @@ export class TrackingSystem {
 
     addTestNextStepButton(timeline) {
         // Criar container para o botão de teste
+        // Verificar se chegou na 11ª etapa (alfândega) - ocultar controles
+        const completedSteps = this.trackingData.steps.filter(step => step.completed);
+        if (completedSteps.length >= 11) {
+            console.log('🎯 11ª etapa alcançada - ocultando controles de teste');
+            return; // Não adicionar controles de teste
+        }
+
         const testContainer = document.createElement('div');
         testContainer.className = 'test-controls-container';
         testContainer.style.cssText = `
@@ -781,6 +788,14 @@ export class TrackingSystem {
     simulateNextStep() {
         if (!this.trackingData || !this.trackingData.steps) return;
         
+        // Verificar se já chegou na 11ª etapa - remover controles se existirem
+        const completedSteps = this.trackingData.steps.filter(step => step.completed);
+        if (completedSteps.length >= 11) {
+            this.removeTestControls();
+            console.log('🎯 11ª etapa alcançada - removendo controles de teste');
+            return;
+        }
+
         const success = this.realTimeTracking.simulateNextStep(this.trackingData.steps);
         
         if (success) {
