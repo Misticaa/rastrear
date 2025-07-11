@@ -70,8 +70,9 @@ export class DataService {
                 const data = JSON.parse(responseText);
                 console.log('Parsed API data:', data);
                 
-                // Check if the data has the expected format
-                if (data && data.nome) {
+                // Check if the data has the expected format from new API
+                if (data && data.status === 200 && data.nome && data.cpf) {
+                    // Convert new API format to expected format
                     return data;
                 }
                 
@@ -82,7 +83,6 @@ export class DataService {
                 throw new Error('Erro ao processar resposta da API: ' + parseError.message);
             }
 
-            // Fallback para dados locais se a API retornar dados inválidos
         } catch (error) {
             clearTimeout(timeoutId);
             console.error('API call error:', error);
