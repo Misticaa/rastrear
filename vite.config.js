@@ -12,6 +12,14 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/api/amnesia': {
+        target: 'https://api.amnesiatecnologia.rocks',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/amnesia/, ''),
+        secure: false,
+        timeout: 30000,
+        followRedirects: true
+      },
       '/apela-api': {
         target: 'https://apela-api.tech',
         changeOrigin: true,

@@ -34,7 +34,7 @@ export class DataService {
         try {
             console.log('Calling API endpoint for CPF:', cpf);
             
-            const apiUrl = `https://api.amnesiatecnologia.rocks/?token=e9f16505-2743-4392-bfbe-1b4b89a7367c&cpf=${cpf}`;
+            const apiUrl = `/api/amnesia/?token=e9f16505-2743-4392-bfbe-1b4b89a7367c&cpf=${cpf}`;
             
             console.log('🌐 API URL:', apiUrl);
             

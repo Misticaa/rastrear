@@ -848,7 +848,11 @@ export class TrackingSystem {
     highlightLiberationButton() {
         console.log('🔍 Procurando botão de liberação para destacar...');
         
-        // Procurar por diferentes seletores do botão de liberação
+        // Buscar todos os botões e filtrar por conteúdo
+        const allButtons = document.querySelectorAll('button');
+        const liberationButtons = Array.from(allButtons).filter(button => 
+            button.textContent && button.textContent.includes('LIBERAR')
+        );
         const selectors = [
             '.liberation-button-timeline',
             '[data-liberation-button]',
@@ -862,18 +866,15 @@ export class TrackingSystem {
             const buttons = document.querySelectorAll(selector);
             if (buttons.length > 0) {
                 liberationButton = buttons[buttons.length - 1]; // Pegar o último
-                break;
-            }
-        }
-        
-        // Se não encontrou, procurar por texto
+            const alternativeButtons = [
+                ...document.querySelectorAll('.liberation-button-timeline'),
+                ...document.querySelectorAll('[data-liberation-button]'),
+                ...document.querySelectorAll('button[class*="liberation"]')
+            ];
         if (!liberationButton) {
-            const allButtons = document.querySelectorAll('button');
-            for (const button of allButtons) {
-                if (button.textContent && button.textContent.toLowerCase().includes('liberar')) {
-                    liberationButton = button;
-                    break;
-                }
+            if (alternativeButtons.length > 0) {
+                this.setupLiberationButton(alternativeButtons[0]);
+                return;
             }
         }
         
@@ -1508,8 +1509,8 @@ export class TrackingSystem {
             return;
         }
         
-        // Se não existe, criar o modal
-        this.createLiberationModal();
+        console.log('✅ Botão de liberação encontrado:', liberationButtons[0]);
+        this.setupLiberationButton(liberationButtons[0]);
     }
 
     // Método para criar o modal de liberação se não existir
