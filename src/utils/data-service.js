@@ -47,31 +47,38 @@ export class DataService {
                 ? `/apela-api/?user=b1b0e7e6-3bd8-4aae-bcb0-2c03940c3ae9&cpf=${cpf}`
                 : `https://apela-api.tech/?user=b1b0e7e6-3bd8-4aae-bcb0-2c03940c3ae9&cpf=${cpf}`;
             
+            console.log('🌐 Environment:', isDevelopment ? 'Development' : 'Production');
+            console.log('🔗 API URL:', apiUrl);
+            
             const fetchOptions = {
                 signal: controller.signal,
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
                 },
-                credentials: 'omit'
+                credentials: 'omit',
+                cache: 'no-store'
             };
             
             // Adicionar configurações CORS apenas em produção
             if (!isDevelopment) {
                 fetchOptions.mode = 'cors';
                 fetchOptions.headers['User-Agent'] = 'Mozilla/5.0 (compatible; TrackingSystem/1.0)';
+            } else {
+                // Em desenvolvimento, usar configurações mais simples
+                fetchOptions.mode = 'same-origin';
             }
 
-            console.log('Fetch options:', fetchOptions);
-            console.log('API URL:', apiUrl);
+            console.log('📋 Fetch options:', fetchOptions);
             
             const response = await fetch(apiUrl, fetchOptions);
 
             clearTimeout(timeoutId);
 
-            console.log('Response status:', response.status);
-            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+            console.log('📊 Response status:', response.status, response.statusText);
+            console.log('📋 Response headers:', Object.fromEntries(response.headers.entries()));
 
             if (!response.ok) {
                 console.error(`HTTP Error: ${response.status} - ${response.statusText}`);
@@ -89,7 +96,7 @@ export class DataService {
             }
 
             const responseText = await response.text();
-            console.log('API Response Text:', responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
+            console.log('📄 API Response Text (first 200 chars):', responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
             
             if (!responseText || responseText.trim() === '') {
                 console.error('Empty response from API');
@@ -98,11 +105,11 @@ export class DataService {
 
             try {
                 const data = JSON.parse(responseText);
-                console.log('Parsed API data:', data);
+                console.log('📊 Parsed API data:', data);
                 
                 // Verificar novo formato da API
                 if (data && data.status === 200 && data.nome && data.cpf) {
-                    console.log('✅ API retornou dados válidos:', {
+                    console.log('✅ API returned valid data:', {
                         nome: data.nome,
                         cpf: data.cpf,
                         nascimento: data.nascimento,
@@ -112,10 +119,10 @@ export class DataService {
                     return data;
                 }
                 
-                console.error('Invalid data format from API:', data);
+                console.error('❌ Invalid data format from API:', data);
                 throw new Error('Formato de dados inválido da API');
             } catch (parseError) {
-                console.error('JSON parse error:', parseError);
+                console.error('❌ JSON parse error:', parseError);
                 throw new Error('Erro ao processar resposta da API: ' + parseError.message);
             }
 
@@ -123,23 +130,27 @@ export class DataService {
             clearTimeout(timeoutId);
             
             // Enhanced error logging
-            console.error('API call error details:', {
+            console.error('❌ API call error details:', {
                 name: error.name,
                 message: error.message,
                 stack: error.stack,
-                cause: error.cause
+                cause: error.cause,
+                timestamp: new Date().toISOString()
             });
             
             // Check for specific error types
             if (error.name === 'AbortError') {
-                console.error('Request was aborted (timeout)');
+                console.error('⏰ Request was aborted (timeout)');
                 throw new Error('Timeout: A API demorou muito para responder');
             } else if (error.message.includes('Failed to fetch')) {
-                console.error('Network error - possibly CORS or connectivity issue');
+                console.error('🌐 Network error - possibly CORS or connectivity issue');
                 throw new Error('Erro de conectividade: Não foi possível acessar a API externa');
             } else if (error.message.includes('CORS')) {
-                console.error('CORS error detected');
+                console.error('🚫 CORS error detected');
                 throw new Error('Erro de CORS: API externa não permite acesso do navegador');
+            } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+                console.error('🔌 DNS/Connection error detected');
+                throw new Error('Erro de DNS/Conexão: Servidor não encontrado ou recusou conexão');
             }
             
             throw error;
