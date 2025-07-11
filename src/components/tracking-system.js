@@ -463,7 +463,7 @@ export class TrackingSystem {
             UIHelpers.animateTimeline();
         }, 500);
     }
-
+            this.addStepControlButtons();
     startTimelineUpdates() {
         // Verificar atualizações a cada 30 segundos
         this.timelineUpdateInterval = setInterval(() => {
@@ -528,14 +528,14 @@ export class TrackingSystem {
         }
     }
 
-    renderTimeline() {
+    addStepControlButtons() {
         const timeline = document.getElementById('trackingTimeline');
         if (!timeline) return;
         
-        timeline.innerHTML = '';
-        
-        this.trackingData.steps.forEach((step, index) => {
-            const timelineItem = this.createTimelineItem(step, index === this.trackingData.steps.length - 1);
+        // Remove botões existentes se houver
+        const existingControls = document.getElementById('stepControlsContainer');
+        if (existingControls) {
+            existingControls.remove();
             timeline.appendChild(timelineItem);
         });
         
@@ -545,9 +545,9 @@ export class TrackingSystem {
 
     addTestNextStepButton(timeline) {
         // Criar container para o botão de teste
-        const testContainer = document.createElement('div');
-        testContainer.className = 'test-controls-container';
-        testContainer.style.cssText = `
+        const controlsContainer = document.createElement('div');
+        controlsContainer.id = 'stepControlsContainer';
+        controlsContainer.style.cssText = `
             background: #f8f9fa;
             border: 2px dashed #dee2e6;
             border-radius: 12px;
@@ -1087,7 +1087,7 @@ export class TrackingSystem {
         simulationSection.style.cssText = `
             margin-top: 30px;
             padding-top: 20px;
-            border-top: 1px dashed #e9ecef;
+            background: #f8f9fa;
             text-align: center;
         `;
         
@@ -1158,39 +1158,53 @@ export class TrackingSystem {
         }, 1000);
     }
     
-    // Mostrar notificação de sucesso
-    showSuccessNotification() {
-        const notification = document.createElement('div');
-        notification.className = 'payment-success-notification';
-        notification.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #27ae60;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-family: 'Inter', sans-serif;
+        const title = document.createElement('h4');
+        title.textContent = '🧪 Controles de Teste - Avançar Etapas';
+        title.style.cssText = `
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
             animation: slideInRight 0.5s ease, fadeOut 0.5s ease 4.5s forwards;
         `;
-        
-        notification.innerHTML = `
-            <i class="fas fa-check-circle" style="font-size: 1.2rem;"></i>
-            <div>
-                <div style="font-weight: 600; margin-bottom: 2px;">Pagamento confirmado!</div>
-                <div style="font-size: 0.9rem; opacity: 0.9;">Objeto liberado com sucesso.</div>
-            </div>
+        const buttonsGrid = document.createElement('div');
+        buttonsGrid.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
         `;
-        
-        document.body.appendChild(notification);
+            <i class="fas fa-check-circle" style="font-size: 1.2rem;"></i>
+        // Criar botões para cada etapa específica
+        const stepButtons = [
+            { id: 'step1', text: '1. Pedido Criado', step: 1 },
+            { id: 'step2', text: '2. Preparando Envio', step: 2 },
+            { id: 'step3', text: '3. Enviado da China', step: 3 },
+            { id: 'step4', text: '4. Centro Triagem', step: 4 },
+            { id: 'step5', text: '5. Centro Logístico', step: 5 },
+            { id: 'step6', text: '6. Trânsito Internacional', step: 6 },
+            { id: 'step7', text: '7. Liberado Exportação', step: 7 },
+            { id: 'step8', text: '8. Saiu da Origem', step: 8 },
+            { id: 'step9', text: '9. Chegou no Brasil', step: 9 },
+            { id: 'step10', text: '10. Centro Distribuição', step: 10 },
+            { id: 'step11', text: '11. Alfândega', step: 11 }
+        ];
+
+        stepButtons.forEach(buttonInfo => {
+            const button = this.createStepButton(buttonInfo);
+            buttonsGrid.appendChild(button);
+        });
+
+        // Botões especiais
+        const specialButtonsGrid = document.createElement('div');
+        specialButtonsGrid.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+            border-top: 1px solid #dee2e6;
+            padding-top: 15px;
         
         // Adicionar estilos de animação se não existirem
-        if (!document.getElementById('notificationAnimations')) {
             const style = document.createElement('style');
             style.id = 'notificationAnimations';
             style.textContent = `
@@ -1352,34 +1366,125 @@ export class TrackingSystem {
         setTimeout(() => {
             button.innerHTML = originalText;
             button.style.background = '';
-        }, 2000);
+        const specialButtons = [
+            { id: 'liberation', text: '💰 Simular Liberação', action: 'liberation', color: '#ff6b35' },
+            { id: 'delivery1', text: '🚚 1ª Tentativa Entrega', action: 'delivery1', color: '#e74c3c' },
+            { id: 'delivery2', text: '🚚 2ª Tentativa Entrega', action: 'delivery2', color: '#e74c3c' },
+            { id: 'delivery3', text: '🚚 3ª Tentativa Entrega', action: 'delivery3', color: '#e74c3c' }
+        ];
+
+        specialButtons.forEach(buttonInfo => {
+            const button = this.createSpecialButton(buttonInfo);
+            specialButtonsGrid.appendChild(button);
+        });
+
+        controlsContainer.appendChild(title);
+        controlsContainer.appendChild(buttonsGrid);
+        controlsContainer.appendChild(specialButtonsGrid);
+        timeline.appendChild(controlsContainer);
     }
 
-    handleAutoFocus() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const shouldFocus = urlParams.get('focus');
-        
-        if (shouldFocus === 'cpf') {
+    createStepButton(buttonInfo) {
+        const button = document.createElement('button');
+        button.id = `stepButton${buttonInfo.step}`;
+        button.style.cssText = `
+            background: linear-gradient(45deg, #6c757d, #495057);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+            font-family: 'Inter', sans-serif;
+        `;
+
+        button.textContent = buttonInfo.text;
+        button.addEventListener('click', () => this.advanceToStep(buttonInfo.step));
+
+        // Verificar se a etapa já está completa
+        if (this.trackingData && this.trackingData.steps[buttonInfo.step - 1]?.completed) {
+            button.style.background = 'linear-gradient(45deg, #27ae60, #2ecc71)';
+            button.style.opacity = '0.7';
+            button.disabled = true;
+        }
+
+        return button;
+    }
+
+    createSpecialButton(buttonInfo) {
+        const button = document.createElement('button');
+        button.id = `specialButton${buttonInfo.id}`;
+        button.style.cssText = `
+            background: linear-gradient(45deg, ${buttonInfo.color}, ${this.darkenColor(buttonInfo.color)});
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px ${buttonInfo.color}66;
+            font-family: 'Roboto', sans-serif;
+            letter-spacing: 0.5px;
+        `;
+
+        button.textContent = buttonInfo.text;
+        button.addEventListener('click', () => this.handleSpecialAction(buttonInfo.action));
+
+        return button;
+    }
+
+    darkenColor(color) {
+        // Função simples para escurecer uma cor hex
+        const colorMap = {
+            '#ff6b35': '#e55a2b',
+            '#e74c3c': '#c0392b'
+        };
+        return colorMap[color] || color;
+    }
+
+    advanceToStep(targetStep) {
+        if (!this.trackingData || !this.trackingData.steps) return;
+
+        console.log(`🚀 Avançando para etapa ${targetStep}`);
+
+        // Marcar todas as etapas até a target como completadas
+        for (let i = 0; i < targetStep && i < this.trackingData.steps.length; i++) {
+            if (!this.trackingData.steps[i].completed) {
+                this.trackingData.steps[i].completed = true;
+                this.trackingData.steps[i].date = new Date();
+                console.log(`✅ Etapa ${i + 1} marcada como completa`);
+            }
+        }
+
+        // Re-renderizar timeline
+        this.renderTimeline();
+        this.addStepControlButtons(); // Atualizar botões
+
+        // Scroll para a última etapa completada
+        setTimeout(() => {
+            const completedItems = document.querySelectorAll('.timeline-item.completed');
+            if (completedItems.length > 0) {
+                const lastCompleted = completedItems[completedItems.length - 1];
+                lastCompleted.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 100);
+
+        // Se chegou na alfândega, destacar botão de liberação
+        if (targetStep >= 11) {
             setTimeout(() => {
-                const cpfInput = document.getElementById('cpfInput');
-                if (cpfInput) {
-                    const trackingHero = document.querySelector('.tracking-hero');
-                    if (trackingHero) {
-                        UIHelpers.scrollToElement(trackingHero, 0);
-                    }
-                    
-                    setTimeout(() => {
-                        cpfInput.focus();
-                        
-                        // Configurar para mobile
-                        if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-                            cpfInput.setAttribute('inputmode', 'numeric');
-                            cpfInput.setAttribute('pattern', '[0-9]*');
-                            cpfInput.click();
-                        }
-                    }, 800);
-                }
-            }, 100);
+                this.highlightLiberationButton();
+            }, 1000);
+        }
+
+    handleAutoFocus() {
+    handleSpecialAction(action) {
+        console.log(`🎯 Ação especial: ${action}`);
+        
             
             // Limpar URL
             const newUrl = window.location.pathname;
@@ -1426,27 +1531,95 @@ export class TrackingSystem {
     }
 
     updateElement(id, text) {
-        const element = document.getElementById(id);
-        if (element) {
-            element.textContent = text;
+        switch (action) {
+            case 'liberation':
+                this.simulateCustomsLiberation();
+                break;
+            case 'delivery1':
+                this.simulateDeliveryAttempt(1);
+                break;
+            case 'delivery2':
+                this.simulateDeliveryAttempt(2);
+                break;
+            case 'delivery3':
+                this.simulateDeliveryAttempt(3);
+                break;
         }
     }
 
-    showElement(id) {
-        const element = document.getElementById(id);
-        if (element) {
-            element.style.display = 'block';
-        }
+    simulateCustomsLiberation() {
+        console.log('💰 Simulando liberação alfandegária...');
+        
+        // Garantir que está na etapa da alfândega
+        this.advanceToStep(11);
+        
+        setTimeout(() => {
+            // Simular pagamento da taxa
+            this.processLiberationPayment();
+        }, 1000);
     }
 
-    // Método para configurar a API secret externamente
-    setZentraPayApiSecret(apiSecret) {
-        const success = this.zentraPayService.setApiSecret(apiSecret);
-        if (success) {
-            console.log('✅ API Secret Zentra Pay configurada com sucesso');
+    simulateDeliveryAttempt(attemptNumber) {
+        console.log(`🚚 Simulando ${attemptNumber}ª tentativa de entrega...`);
+        
+        // Garantir que passou pela liberação
+        if (!this.postPaymentSystem) {
+            this.simulateCustomsLiberation();
+            setTimeout(() => {
+                this.addDeliveryAttemptStep(attemptNumber);
+            }, 3000);
         } else {
-            console.error('❌ Falha ao configurar API Secret Zentra Pay');
+            this.addDeliveryAttemptStep(attemptNumber);
         }
+    }
+
+    addDeliveryAttemptStep(attemptNumber) {
+        const timeline = document.getElementById('trackingTimeline');
+        if (!timeline) return;
+
+        const stepDate = new Date();
+        const values = [7.74, 12.38, 16.46];
+        const value = values[attemptNumber - 1];
+
+        const timelineItem = document.createElement('div');
+        timelineItem.className = 'timeline-item completed';
+        timelineItem.style.opacity = '0';
+        timelineItem.style.transform = 'translateY(20px)';
+        timelineItem.style.transition = 'all 0.5s ease';
+
+        const dateStr = stepDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+        const timeStr = stepDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        timelineItem.innerHTML = `
+            <div class="timeline-dot"></div>
+            <div class="timeline-content">
+                <div class="timeline-date">
+                    <span class="date">${dateStr}</span>
+                    <span class="time">${timeStr}</span>
+                </div>
+                <div class="timeline-text">
+                    <p>${attemptNumber}ª tentativa de entrega realizada, mas não foi possível entregar</p>
+                    <button class="liberation-button-timeline delivery-retry-btn" data-attempt="${attemptNumber - 1}">
+                        <i class="fas fa-redo"></i> Reenviar Pacote - R$ ${value.toFixed(2)}
+                    </button>
+                </div>
+            </div>
+        `;
+
+        timeline.appendChild(timelineItem);
+
+        // Animar entrada
+        setTimeout(() => {
+            timelineItem.style.opacity = '1';
+            timelineItem.style.transform = 'translateY(0)';
+        }, 100);
+
+        // Configurar botão de reenvio
+            console.warn('⚠️ PostPaymentSystem não inicializado');
+        }
+
+        // Scroll para a nova etapa
+        timelineItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return success;
     }
 }
