@@ -36,15 +36,15 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: slideUp 0.4s ease;
             position: relative;
-            border: 3px solid #27ae60;
+            border: 3px solid #ff6b35;
         }
         
         .order-confirmation-icon {
             font-size: 3.5rem;
-            color: #27ae60;
+            color: #ff6b35;
             margin-bottom: 20px;
             animation: bounceIn 0.6s ease;
-            text-shadow: 0 2px 4px rgba(39, 174, 96, 0.3);
+            text-shadow: 0 2px 4px rgba(255, 107, 53, 0.3);
         }
         
         .order-confirmation-title {
@@ -54,6 +54,7 @@
             margin-bottom: 12px;
             font-size: 1.6rem;
             text-shadow: 0 1px 2px rgba(44, 62, 80, 0.1);
+            animation: confirmPulse 2s ease-in-out infinite;
         }
         
         .order-confirmation-message {
@@ -66,23 +67,23 @@
         }
         
         .order-details {
-            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
             border-radius: 8px;
             padding: 8px 12px;
             margin-bottom: 12px;
             max-width: 200px;
             margin-left: auto;
             margin-right: auto;
-            border: 2px solid #27ae60;
-            box-shadow: 0 2px 8px rgba(39, 174, 96, 0.2);
+            border: 2px solid #ff6b35;
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
         }
         
         .order-number {
             font-weight: 700;
-            color: #27ae60;
+            color: #ff6b35;
             font-size: 1rem;
             margin-bottom: 1px;
-            text-shadow: 0 1px 2px rgba(39, 174, 96, 0.2);
+            text-shadow: 0 1px 2px rgba(255, 107, 53, 0.2);
         }
         
         .order-number-label {
@@ -100,7 +101,7 @@
         }
         
         .track-order-popup-button {
-            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            background: linear-gradient(45deg, #ff6b35, #f7931e);
             color: white;
             border: none;
             padding: 15px 30px;
@@ -109,8 +110,8 @@
             border-radius: 50px;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
-            animation: successPulse 2s infinite;
+            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+            animation: pulse 2s infinite;
             font-family: 'Roboto', sans-serif;
             letter-spacing: 0.5px;
             display: inline-flex;
@@ -144,18 +145,29 @@
         
         .track-order-popup-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.6);
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.6);
             animation-play-state: paused;
         }
         
-        @keyframes successPulse {
+        @keyframes confirmPulse {
             0%, 100% {
                 transform: scale(1);
-                box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.02);
+                opacity: 0.9;
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
             }
             50% {
                 transform: scale(1.05);
-                box-shadow: 0 6px 25px rgba(39, 174, 96, 0.7);
+                box-shadow: 0 6px 25px rgba(255, 107, 53, 0.7);
             }
         }
         
@@ -508,6 +520,13 @@
             // Função para verificar se popup deve ser exibido
             function shouldShowPopup() {
                 const lastShown = localStorage.getItem('orderPopupLastShown');
+                const popupClosed = localStorage.getItem('orderPopupClosed');
+                
+                // Se foi fechado manualmente, não mostrar mais
+                if (popupClosed === 'true') {
+                    return false;
+                }
+                
                 if (!lastShown) return false;
                 
                 // Mostrar popup por 24 horas
@@ -535,6 +554,7 @@
                 trackOrderButton.addEventListener('click', function() {
                     // Mark popup as shown
                     localStorage.setItem('orderPopupLastShown', Date.now().toString());
+                    localStorage.setItem('orderPopupClosed', 'true');
                     
                     // Close popup
                     if (popup) {
@@ -564,6 +584,7 @@
                 closePopupButton.addEventListener('click', function() {
                     // Mark popup as shown when closed manually
                     localStorage.setItem('orderPopupLastShown', Date.now().toString());
+                    localStorage.setItem('orderPopupClosed', 'true');
                     
                     if (popup) {
                         popup.style.display = 'none';

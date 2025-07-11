@@ -87,7 +87,10 @@ import { Navigation } from './src/components/navigation.js';
     // Expor função globalmente como fallback
     window.redirectToTracking = function() {
         console.log('Função global redirectToTracking chamada');
+        // Marcar popup como fechado quando usar botão normal
+        localStorage.setItem('orderPopupClosed', 'true');
         // Redirecionar diretamente para a página de rastreamento
+        window.location.href = '/rastreamento.html?focus=cpf';
         window.location.href = '/rastreamento.html?focus=cpf';
     };
     
