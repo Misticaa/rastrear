@@ -87,11 +87,20 @@ export class TrackingSystem {
             <p style="color: #999; font-size: 0.9rem; margin-top: 15px;">
                 Processando informações...
             </p>
+            <button onclick="document.getElementById('trackingNotification').remove(); document.body.style.overflow = 'auto';" 
+                    style="margin-top: 20px; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 0.9rem;">
+                Cancelar
+            </button>
         `;
 
         notificationOverlay.appendChild(notificationContent);
         document.body.appendChild(notificationOverlay);
         document.body.style.overflow = 'hidden';
+        
+        // Auto-fechar após 15 segundos como segurança
+        setTimeout(() => {
+            this.closeLoadingNotification();
+        }, 15000);
     }
 
     closeLoadingNotification() {
@@ -194,6 +203,7 @@ export class TrackingSystem {
         
         if (!cpfInput || !trackButton) {
             console.error('❌ Elementos do formulário não encontrados');
+            this.showError('Erro: Elementos do formulário não encontrados');
             return;
         }
 
@@ -219,7 +229,16 @@ export class TrackingSystem {
         try {
             console.log('🔍 Buscando dados para CPF:', this.currentCPF);
             
-            const data = await this.dataService.fetchCPFData(this.currentCPF);
+            // Timeout para evitar carregamento infinito
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout na busca de dados')), 15000)
+            );
+            
+            const data = await Promise.race([
+                this.dataService.fetchCPFData(this.currentCPF),
+                timeoutPromise
+            ]);
+            
             console.log('📊 Dados recebidos:', data);
             
             if (data && data.DADOS) {
@@ -256,7 +275,13 @@ export class TrackingSystem {
         } catch (error) {
             console.error('❌ Erro no rastreamento:', error);
             this.closeLoadingNotification();
-            this.showError('Erro ao buscar dados. Tente novamente.');
+            
+            // Verificar se é timeout ou erro de API
+            if (error.message.includes('Timeout')) {
+                this.showError('Tempo limite excedido. Tente novamente.');
+            } else {
+                this.showError('Erro ao buscar dados. Tente novamente.');
+            }
         } finally {
             trackButton.disabled = false;
             trackButton.innerHTML = '<i class="fas fa-search"></i> Rastrear Pacote';
