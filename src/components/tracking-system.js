@@ -436,31 +436,31 @@ export class TrackingSystem {
     async showLiberationModal() {
         console.log('🔓 Abrindo modal de liberação');
         
+        // Mostrar loading otimizado com mensagens dinâmicas
+        this.showOptimizedLiberationLoading();
+        
         const modal = document.getElementById('liberationModal');
         if (!modal) return;
 
         try {
-            console.log('🚀 Gerando PIX via Zentra Pay...');
-            
             const pixResult = await this.zentraPayService.createPixTransaction(
                 this.userData, 
                 26.34
             );
 
             if (pixResult.success) {
-                console.log('🎉 PIX gerado com sucesso!');
                 this.pixData = pixResult;
                 this.updateModalWithRealPix();
             } else {
-                console.warn('⚠️ Erro ao gerar PIX, usando estático');
                 this.updateModalWithStaticPix();
             }
             
         } catch (error) {
-            console.error('💥 Erro ao gerar PIX:', error);
             this.updateModalWithStaticPix();
         }
 
+        // Fechar loading e mostrar modal
+        this.closeOptimizedLiberationLoading();
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
     }
