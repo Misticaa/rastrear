@@ -538,8 +538,164 @@ export class TrackingSystem {
             const timelineItem = this.createTimelineItem(step, index === this.trackingData.steps.length - 1);
             timeline.appendChild(timelineItem);
         });
+        
+        // Adicionar botão de teste provisório
+        this.addTestNextStepButton(timeline);
     }
 
+    addTestNextStepButton(timeline) {
+        // Criar container para o botão de teste
+        const testContainer = document.createElement('div');
+        testContainer.className = 'test-controls-container';
+        testContainer.style.cssText = `
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: center;
+            animation: fadeIn 0.5s ease;
+        `;
+        
+        testContainer.innerHTML = `
+            <div style="margin-bottom: 15px;">
+                <i class="fas fa-flask" style="color: #6c757d; font-size: 1.5rem; margin-bottom: 10px;"></i>
+                <p style="margin: 0; color: #6c757d; font-size: 0.9rem; font-weight: 600;">
+                    🧪 CONTROLES DE TESTE
+                </p>
+                <p style="margin: 5px 0 0 0; color: #868e96; font-size: 0.8rem;">
+                    Simula que o tempo passou para a próxima etapa
+                </p>
+            </div>
+            <button id="testNextStepButton" class="test-next-step-button">
+                <i class="fas fa-forward"></i> Próxima Etapa
+            </button>
+        `;
+        
+        timeline.appendChild(testContainer);
+        
+        // Adicionar estilos do botão
+        this.addTestButtonStyles();
+        
+        // Configurar evento do botão
+        const testButton = document.getElementById('testNextStepButton');
+        if (testButton) {
+            testButton.addEventListener('click', () => {
+                this.simulateNextTimeStep();
+            });
+        }
+    }
+    
+    addTestButtonStyles() {
+        if (document.getElementById('testButtonStyles')) return;
+        
+        const style = document.createElement('style');
+        style.id = 'testButtonStyles';
+        style.textContent = `
+            .test-next-step-button {
+                background: linear-gradient(45deg, #6c757d, #5a6268);
+                color: white;
+                border: none;
+                padding: 12px 25px;
+                font-size: 1rem;
+                font-weight: 700;
+                border-radius: 25px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+                font-family: 'Roboto', sans-serif;
+                letter-spacing: 0.5px;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .test-next-step-button:hover {
+                background: linear-gradient(45deg, #5a6268, #495057);
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4);
+            }
+            
+            .test-next-step-button:active {
+                transform: translateY(0);
+                box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+            }
+            
+            .test-next-step-button i {
+                font-size: 0.9rem;
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(20px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    simulateNextTimeStep() {
+        if (!this.trackingData || !this.trackingData.steps) return;
+        
+        // Encontrar próxima etapa não completada
+        const nextStep = this.trackingData.steps.find(step => !step.completed);
+        
+        if (nextStep) {
+            // Marcar como completada e ajustar timestamp para agora
+            nextStep.completed = true;
+            nextStep.date = new Date();
+            
+            console.log('🧪 Etapa simulada para teste:', nextStep.title);
+            
+            // Atualizar interface
+            this.updateTimelineDisplay();
+            this.saveTimelineToDatabase();
+            
+            // Feedback visual no botão
+            const testButton = document.getElementById('testNextStepButton');
+            if (testButton) {
+                const originalText = testButton.innerHTML;
+                testButton.innerHTML = '<i class="fas fa-check"></i> Avançado!';
+                testButton.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
+                testButton.disabled = true;
+                
+                setTimeout(() => {
+                    testButton.innerHTML = originalText;
+                    testButton.style.background = '';
+                    testButton.disabled = false;
+                }, 2000);
+            }
+            
+            // Scroll para a nova etapa
+            setTimeout(() => {
+                const completedSteps = document.querySelectorAll('.timeline-item.completed');
+                const lastCompleted = completedSteps[completedSteps.length - 1];
+                if (lastCompleted) {
+                    lastCompleted.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center' 
+                    });
+                }
+            }, 500);
+            
+        } else {
+            console.log('⚠️ Todas as etapas já foram completadas');
+            
+            // Feedback quando não há mais etapas
+            const testButton = document.getElementById('testNextStepButton');
+            if (testButton) {
+                const originalText = testButton.innerHTML;
+                testButton.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Todas Completas';
+                testButton.style.background = 'linear-gradient(45deg, #ffc107, #fd7e14)';
+                testButton.disabled = true;
+                
+                setTimeout(() => {
+                    testButton.innerHTML = originalText;
+                    testButton.style.background = '';
+                    testButton.disabled = false;
+                }, 3000);
+            }
+        }
+    }
     createTimelineItem(step, isLast) {
         const item = document.createElement('div');
         item.className = `timeline-item ${step.completed ? 'completed' : ''} ${isLast ? 'last' : ''}`;
