@@ -12,19 +12,34 @@ import { Navigation } from './src/components/navigation.js';
     let trackingSystem;
     
     function initializeTrackingPage() {
-        console.log('=== INICIALIZANDO PÁGINA DE RASTREAMENTO APRIMORADA ===');
+        console.log('=== INICIALIZANDO PÁGINA DE RASTREAMENTO ===');
         
         try {
             // Inicializar navegação
             Navigation.init();
             console.log('✓ Navegação inicializada');
             
-            // Inicializar sistema de rastreamento aprimorado
+            // Inicializar sistema de rastreamento
             if (!trackingSystem) {
-                trackingSystem = new EnhancedTrackingSystem();
-                window.trackingSystemInstance = trackingSystem; // Expor globalmente
-                console.log('✓ Sistema de rastreamento aprimorado criado');
+                // Importar dinamicamente para evitar problemas de dependência
+                import('./src/components/tracking-system.js').then(module => {
+                    trackingSystem = new module.TrackingSystem();
+                    window.trackingSystemInstance = trackingSystem;
+                    trackingSystem.init();
+                    console.log('✓ Sistema de rastreamento inicializado');
+                }).catch(error => {
+                    console.error('❌ Erro ao importar TrackingSystem:', error);
+                });
+            } else {
+                trackingSystem.init();
             }
+                window.trackingSystemInstance = trackingSystem; // Expor globalmente
+                console.log('✓ Sistema de rastreamento criado');
+            }
+            
+            // Inicializar o sistema
+            trackingSystem.init();
+            console.log('✓ Sistema de rastreamento inicializado');
             
             // Configurar efeito de header no scroll
             setupHeaderScrollEffect();
@@ -36,7 +51,7 @@ import { Navigation } from './src/components/navigation.js';
             // Configurar API secret se disponível
             configureZentraPayApiSecret();
             
-            console.log('=== PÁGINA DE RASTREAMENTO APRIMORADA INICIALIZADA COM SUCESSO ===');
+            console.log('=== PÁGINA DE RASTREAMENTO INICIALIZADA COM SUCESSO ===');
         } catch (error) {
             console.error('❌ Erro na inicialização da página de rastreamento:', error);
             // Tentar novamente após delay

