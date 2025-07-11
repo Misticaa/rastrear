@@ -520,6 +520,7 @@ export class TrackingSystem {
         // Modal de liberação
         const closeModal = document.getElementById('closeModal');
         const copyPixButton = document.getElementById('copyPixButtonModal');
+        const simulatePaymentButton = document.getElementById('simulatePaymentButton');
         const liberationModal = document.getElementById('liberationModal');
 
         if (closeModal) {
@@ -534,6 +535,11 @@ export class TrackingSystem {
             });
         }
 
+        if (simulatePaymentButton) {
+            simulatePaymentButton.addEventListener('click', () => {
+                this.simulatePayment();
+            });
+        }
         if (liberationModal) {
             liberationModal.addEventListener('click', (e) => {
                 if (e.target === liberationModal) {
