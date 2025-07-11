@@ -703,6 +703,20 @@ export class TrackingSystem {
             }
         }
     }
+
+    removeTestControls() {
+        const testContainer = document.querySelector('.test-controls-container');
+        if (testContainer) {
+            testContainer.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                if (testContainer.parentNode) {
+                    testContainer.remove();
+                    console.log('🧹 Controles de teste removidos');
+                }
+            }, 300);
+        }
+    }
+
     createTimelineItem(step, isLast) {
         const item = document.createElement('div');
         item.className = `timeline-item ${step.completed ? 'completed' : ''} ${isLast ? 'last' : ''}`;
