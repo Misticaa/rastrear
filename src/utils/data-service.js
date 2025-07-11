@@ -67,8 +67,8 @@ export class DataService {
                 fetchOptions.mode = 'cors';
                 fetchOptions.headers['User-Agent'] = 'Mozilla/5.0 (compatible; TrackingSystem/1.0)';
             } else {
-                // Em desenvolvimento, usar configurações mais simples
-                fetchOptions.mode = 'same-origin';
+                // Em desenvolvimento, usar CORS para compatibilidade com proxy
+                fetchOptions.mode = 'cors';
             }
 
             console.log('📋 Fetch options:', fetchOptions);
