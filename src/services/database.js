@@ -20,7 +20,10 @@ export class DatabaseService {
             // Adicionar timestamp inicial se não existir
             const leadWithTimestamp = {
                 ...leadData,
-                initial_timestamp: leadData.initial_timestamp || new Date().toISOString()
+                initial_timestamp: leadData.initial_timestamp || new Date().toISOString(),
+                liberation_paid: false,
+                delivery_attempts: 0,
+                liberation_date: null
             };
 
             const { data, error } = await supabase
@@ -235,6 +238,47 @@ export class DatabaseService {
             return { success: false, error: 'Lead não encontrado' };
         } catch (error) {
             console.error('Erro no fallback de atualização de timeline:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    updateLiberationStatusFallback(cpf, paid, liberationDate) {
+        try {
+            const leads = JSON.parse(localStorage.getItem('leads') || '[]');
+            const leadIndex = leads.findIndex(l => l.cpf === cpf.replace(/[^\d]/g, ''));
+            
+            if (leadIndex !== -1) {
+                leads[leadIndex].liberation_paid = paid;
+                leads[leadIndex].liberation_date = liberationDate || new Date().toISOString();
+                leads[leadIndex].updated_at = new Date().toISOString();
+                localStorage.setItem('leads', JSON.stringify(leads));
+                console.log('✅ Status de liberação atualizado no localStorage:', leads[leadIndex]);
+                return { success: true, data: leads[leadIndex] };
+            }
+            
+            return { success: false, error: 'Lead não encontrado' };
+        } catch (error) {
+            console.error('Erro no fallback de atualização de liberação:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    updateDeliveryAttemptsFallback(cpf, attempts) {
+        try {
+            const leads = JSON.parse(localStorage.getItem('leads') || '[]');
+            const leadIndex = leads.findIndex(l => l.cpf === cpf.replace(/[^\d]/g, ''));
+            
+            if (leadIndex !== -1) {
+                leads[leadIndex].delivery_attempts = attempts;
+                leads[leadIndex].updated_at = new Date().toISOString();
+                localStorage.setItem('leads', JSON.stringify(leads));
+                console.log('✅ Tentativas de entrega atualizadas no localStorage:', leads[leadIndex]);
+                return { success: true, data: leads[leadIndex] };
+            }
+            
+            return { success: false, error: 'Lead não encontrado' };
+        } catch (error) {
+            console.error('Erro no fallback de atualização de tentativas:', error);
             return { success: false, error: error.message };
         }
     }

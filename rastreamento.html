@@ -411,62 +411,6 @@
         </div>
     </div>
 
-    <!-- Modal de Tentativa de Entrega -->
-    <div class="modal-overlay" id="deliveryModal" style="display: none;">
-        <div class="modal-container">
-            <div class="modal-header delivery-header">
-                <h3><i class="fas fa-truck"></i> Tentativa de Entrega</h3>
-                <button class="modal-close" id="closeDeliveryModal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="modal-content">
-                <div class="delivery-info">
-                    <p id="deliveryAttemptText">Tentamos entregar seu pedido às <strong id="deliveryTime">05:30</strong>.</p>
-                    <p>Para receber seu pacote, é necessário pagar a taxa de reentrega:</p>
-                    <div class="liberation-fee">
-                        <span class="fee-label">Taxa:</span>
-                        <span class="fee-value" id="deliveryFeeValue">R$ 7,74</span>
-                    </div>
-                </div>
-
-                <!-- Interface de Pagamento PIX para Entrega -->
-                <div class="pix-payment-modal">
-                    <div class="pix-header">
-                        <i class="fas fa-qrcode"></i>
-                        <h4>Pagamento via PIX</h4>
-                    </div>
-                    
-                    <div class="pix-content">
-                        <div class="pix-qr">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=00020126580014BR.GOV.BCB.PIX013636c4b4e4-4c4e-4c4e-4c4e-4c4e4c4e4c4e5204000053039865802BR5925SHOPEE EXPRESS LTDA6009SAO PAULO62070503***6304A1B2" alt="QR Code PIX" class="qr-code">
-                        </div>
-                        
-                        <div class="pix-copy">
-                            <label>PIX Copia e Cola:</label>
-                            <div class="copy-container">
-                                <input type="text" id="pixCodeDelivery" value="00020126580014BR.GOV.BCB.PIX013636c4b4e4-4c4e-4c4e-4c4e-4c4e4c4e4c4e5204000053039865802BR5925SHOPEE EXPRESS LTDA6009SAO PAULO62070503***6304A1B2" readonly>
-                                <button class="copy-button" id="copyPixButtonDelivery">
-                                    <i class="fas fa-copy"></i> Copiar
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="pix-steps">
-                            <h5>Como pagar:</h5>
-                            <ol>
-                                <li><i class="fas fa-mobile-alt"></i> Acesse seu app de banco</li>
-                                <li><i class="fas fa-qrcode"></i> Cole o código ou escaneie o QR Code</li>
-                                <li><i class="fas fa-check"></i> Confirme o pagamento</li>
-                            </ol>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
