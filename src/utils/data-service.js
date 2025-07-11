@@ -11,27 +11,15 @@ export class DataService {
         const cleanCPF = cpf.replace(/[^\d]/g, '');
         console.log('Fetching data for CPF:', cleanCPF);
 
-        // Adicionar timeout geral para toda a operação
-        const operationTimeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Operação de busca excedeu tempo limite')), 12000)
-        );
-
         try {
-            // Try the API first with timeout
-            const apiPromise = this.tryAPI(cleanCPF);
-            const response = await Promise.race([apiPromise, operationTimeout]);
-            
+            // Try the API first
+            const response = await this.tryAPI(cleanCPF);
             if (response) {
                 console.log('Data obtained from API:', response);
                 return response;
             }
         } catch (error) {
             console.error('API failed, using fallback:', error.message);
-            
-            // Se for timeout, usar fallback imediatamente
-            if (error.message.includes('timeout') || error.message.includes('Timeout')) {
-                console.log('⏰ Timeout detectado, usando dados fallback');
-            }
         }
 
         // Use fallback data
@@ -41,7 +29,7 @@ export class DataService {
 
     async tryAPI(cpf) {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 segundos timeout
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
 
         try {
             console.log('Calling API endpoint for CPF:', cpf);

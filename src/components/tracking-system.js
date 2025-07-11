@@ -87,20 +87,11 @@ export class TrackingSystem {
             <p style="color: #999; font-size: 0.9rem; margin-top: 15px;">
                 Processando informações...
             </p>
-            <button onclick="document.getElementById('trackingNotification').remove(); document.body.style.overflow = 'auto';" 
-                    style="margin-top: 20px; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 0.9rem;">
-                Cancelar
-            </button>
         `;
 
         notificationOverlay.appendChild(notificationContent);
         document.body.appendChild(notificationOverlay);
         document.body.style.overflow = 'hidden';
-        
-        // Auto-fechar após 15 segundos como segurança
-        setTimeout(() => {
-            this.closeLoadingNotification();
-        }, 15000);
     }
 
     closeLoadingNotification() {
@@ -201,11 +192,8 @@ export class TrackingSystem {
         const cpfInput = document.getElementById('cpfInput');
         const trackButton = document.getElementById('trackButton');
         
-        if (!cpfInput || !trackButton) {
+        if (!cpfInput || !trackButton) return;
             console.error('❌ Elementos do formulário não encontrados');
-            this.showError('Erro: Elementos do formulário não encontrados');
-            return;
-        }
 
         const cpf = cpfInput.value.trim();
         
@@ -229,16 +217,7 @@ export class TrackingSystem {
         try {
             console.log('🔍 Buscando dados para CPF:', this.currentCPF);
             
-            // Timeout para evitar carregamento infinito
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Timeout na busca de dados')), 15000)
-            );
-            
-            const data = await Promise.race([
-                this.dataService.fetchCPFData(this.currentCPF),
-                timeoutPromise
-            ]);
-            
+            const data = await this.dataService.fetchCPFData(this.currentCPF);
             console.log('📊 Dados recebidos:', data);
             
             if (data && data.DADOS) {
@@ -275,13 +254,7 @@ export class TrackingSystem {
         } catch (error) {
             console.error('❌ Erro no rastreamento:', error);
             this.closeLoadingNotification();
-            
-            // Verificar se é timeout ou erro de API
-            if (error.message.includes('Timeout')) {
-                this.showError('Tempo limite excedido. Tente novamente.');
-            } else {
-                this.showError('Erro ao buscar dados. Tente novamente.');
-            }
+            this.showError('Erro ao buscar dados. Tente novamente.');
         } finally {
             trackButton.disabled = false;
             trackButton.innerHTML = '<i class="fas fa-search"></i> Rastrear Pacote';
@@ -463,31 +436,31 @@ export class TrackingSystem {
     async showLiberationModal() {
         console.log('🔓 Abrindo modal de liberação');
         
-        // Mostrar loading otimizado com mensagens dinâmicas
-        this.showLoadingNotification();
-        
         const modal = document.getElementById('liberationModal');
         if (!modal) return;
 
         try {
+            console.log('🚀 Gerando PIX via Zentra Pay...');
+            
             const pixResult = await this.zentraPayService.createPixTransaction(
                 this.userData, 
                 26.34
             );
 
             if (pixResult.success) {
+                console.log('🎉 PIX gerado com sucesso!');
                 this.pixData = pixResult;
                 this.updateModalWithRealPix();
             } else {
+                console.warn('⚠️ Erro ao gerar PIX, usando estático');
                 this.updateModalWithStaticPix();
             }
             
         } catch (error) {
+            console.error('💥 Erro ao gerar PIX:', error);
             this.updateModalWithStaticPix();
         }
 
-        // Fechar loading e mostrar modal
-        this.closeLoadingNotification();
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
     }
@@ -624,91 +597,6 @@ export class TrackingSystem {
             button.innerHTML = originalText;
             button.style.background = '';
         }, 2000);
-    }
-
-    simulatePayment() {
-        console.log('🎭 Simulando pagamento...');
-        
-        // Mostrar feedback visual
-        const simulateButton = document.getElementById('simulatePaymentButton');
-        if (simulateButton) {
-            const originalText = simulateButton.innerHTML;
-            simulateButton.innerHTML = '<i class="fas fa-check-circle"></i> Pagamento Simulado!';
-            simulateButton.style.background = 'linear-gradient(45deg, #27ae60, #2ecc71)';
-            simulateButton.disabled = true;
-            
-            setTimeout(() => {
-                simulateButton.innerHTML = originalText;
-                simulateButton.style.background = '';
-                simulateButton.disabled = false;
-            }, 2000);
-        }
-        
-        // Fechar modal após breve delay
-        setTimeout(() => {
-            this.closeLiberationModal();
-            
-            // Simular próximas etapas do processo
-            setTimeout(() => {
-                this.simulatePostPaymentFlow();
-            }, 1000);
-        }, 1500);
-    }
-
-    simulatePostPaymentFlow() {
-        console.log('🚀 Iniciando fluxo pós-pagamento simulado...');
-        
-        // Adicionar nova etapa: Liberado na alfândega
-        const timeline = document.getElementById('trackingTimeline');
-        if (timeline) {
-            const newStep = this.createSimulatedTimelineStep({
-                title: 'Pedido liberado na alfândega',
-                description: 'Seu pedido foi liberado após o pagamento da taxa alfandegária',
-                date: new Date(),
-                completed: true
-            });
-            
-            timeline.appendChild(newStep);
-            
-            // Animar entrada
-            setTimeout(() => {
-                newStep.style.opacity = '1';
-                newStep.style.transform = 'translateY(0)';
-                newStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
-        }
-        
-        // Atualizar status atual
-        const currentStatus = document.getElementById('currentStatus');
-        if (currentStatus) {
-            currentStatus.textContent = 'Liberado - Preparando para entrega';
-        }
-    }
-
-    createSimulatedTimelineStep({ title, description, date, completed }) {
-        const item = document.createElement('div');
-        item.className = `timeline-item ${completed ? 'completed' : ''}`;
-        item.style.opacity = '0';
-        item.style.transform = 'translateY(20px)';
-        item.style.transition = 'all 0.5s ease';
-
-        const dateStr = date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-        const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-        item.innerHTML = `
-            <div class="timeline-dot"></div>
-            <div class="timeline-content">
-                <div class="timeline-date">
-                    <span class="date">${dateStr}</span>
-                    <span class="time">${timeStr}</span>
-                </div>
-                <div class="timeline-text">
-                    <p>${description}</p>
-                </div>
-            </div>
-        `;
-
-        return item;
     }
 
     checkURLParams() {
