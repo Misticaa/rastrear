@@ -886,9 +886,6 @@ export class TrackingSystem {
         }
         
         console.log('⚠️ Modal PIX estático exibido como fallback');
-        
-        // Adicionar botão de simulação
-        this.addPaymentSimulationButton();
     }
 
     guideToCopyButton() {
