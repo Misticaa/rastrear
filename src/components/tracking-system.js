@@ -192,8 +192,10 @@ export class TrackingSystem {
         const cpfInput = document.getElementById('cpfInput');
         const trackButton = document.getElementById('trackButton');
         
-        if (!cpfInput || !trackButton) return;
+        if (!cpfInput || !trackButton) {
             console.error('❌ Elementos do formulário não encontrados');
+            return;
+        }
 
         const cpf = cpfInput.value.trim();
         
@@ -437,7 +439,7 @@ export class TrackingSystem {
         console.log('🔓 Abrindo modal de liberação');
         
         // Mostrar loading otimizado com mensagens dinâmicas
-        this.showOptimizedLiberationLoading();
+        this.showLoadingNotification();
         
         const modal = document.getElementById('liberationModal');
         if (!modal) return;
@@ -460,7 +462,7 @@ export class TrackingSystem {
         }
 
         // Fechar loading e mostrar modal
-        this.closeOptimizedLiberationLoading();
+        this.closeLoadingNotification();
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
     }

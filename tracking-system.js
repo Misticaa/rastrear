@@ -1,7 +1,7 @@
 /**
  * Script principal da página de rastreamento - Atualizado com sistema aprimorado
  */
-import { EnhancedTrackingSystem } from './src/components/enhanced-tracking-system.js';
+import { TrackingSystem } from './src/components/tracking-system.js';
 import { Navigation } from './src/components/navigation.js';
 
 (function() {
@@ -20,21 +20,8 @@ import { Navigation } from './src/components/navigation.js';
             console.log('✓ Navegação inicializada');
             
             // Inicializar sistema de rastreamento
-            if (!trackingSystem) {
-                // Importar dinamicamente para evitar problemas de dependência
-                import('./src/components/tracking-system.js').then(module => {
-                    trackingSystem = new module.TrackingSystem();
-                    window.trackingSystemInstance = trackingSystem;
-                    trackingSystem.init();
-                    console.log('✓ Sistema de rastreamento inicializado');
-                }).catch(error => {
-                    console.error('❌ Erro ao importar TrackingSystem:', error);
-                });
-            } else {
-                trackingSystem.init();
-            }
-            
-            // Inicializar o sistema
+            trackingSystem = new TrackingSystem();
+            window.trackingSystemInstance = trackingSystem;
             trackingSystem.init();
             console.log('✓ Sistema de rastreamento inicializado');
             
