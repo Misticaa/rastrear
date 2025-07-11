@@ -367,6 +367,12 @@ export class TrackingSystem {
     }
 
     highlightLiberationButton() {
+        // Não destacar se já foi pago
+        if (this.liberationPaid) {
+            console.log('💰 Liberação já paga, não destacando botão');
+            return;
+        }
+        
         // Buscar botões usando múltiplos seletores
         const selectors = [
             '[data-liberation-button]',
