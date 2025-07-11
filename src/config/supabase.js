@@ -3,17 +3,30 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// ✅ CONFIGURAÇÕES SUPABASE - SUBSTITUA PELOS SEUS DADOS REAIS
+const supabaseUrl = "https://SEU_PROJETO.supabase.co";
+const supabaseKey = "SUA_CHAVE_PUBLICA";
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn('⚠️ Variáveis do Supabase não configuradas. Usando modo fallback.');
+// Verificar se as configurações estão definidas
+if (!supabaseUrl || !supabaseKey || 
+    supabaseUrl === "https://SEU_PROJETO.supabase.co" || 
+    supabaseKey === "SUA_CHAVE_PUBLICA") {
+    console.warn('⚠️ Configurações do Supabase não definidas. Configure em src/config/supabase.js');
 }
 
-export const supabase = supabaseUrl && supabaseAnonKey 
-    ? createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = supabaseUrl && supabaseKey && 
+                       supabaseUrl !== "https://SEU_PROJETO.supabase.co" && 
+                       supabaseKey !== "SUA_CHAVE_PUBLICA"
+    ? createClient(supabaseUrl, supabaseKey)
     : null;
 
 export const isSupabaseConfigured = () => {
     return supabase !== null;
 };
+
+// Log de status
+if (supabase) {
+    console.log('✅ Supabase configurado e conectado');
+} else {
+    console.log('⚠️ Supabase não configurado - usando fallback localStorage');
+}

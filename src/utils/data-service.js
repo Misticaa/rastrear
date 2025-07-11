@@ -1,148 +1,59 @@
 /**
- * Serviço para busca de dados de CPF com fallback
+ * Serviço para busca de dados de CPF com nova lógica
  */
+import { CPFApiService } from '../services/cpf-api-service.js';
+
 export class DataService {
     constructor() {
-        this.fallbackData = this.generateFallbackData();
-        console.log('DataService initialized');
+        this.cpfApiService = new CPFApiService();
+        console.log('🚀 DataService inicializado com nova lógica');
     }
 
     async fetchCPFData(cpf) {
         const cleanCPF = cpf.replace(/[^\d]/g, '');
-        console.log('Fetching data for CPF:', cleanCPF);
+        console.log('🔍 BUSCANDO DADOS PARA CPF:', cleanCPF);
 
         try {
-            // Try the API first
-            const response = await this.tryAPI(cleanCPF);
-            if (response) {
-                console.log('Data obtained from API:', response);
-                return response;
-            }
-        } catch (error) {
-            console.error('API failed, using fallback:', error.message);
-        }
-
-        // Use fallback data
-        console.log('Using fallback data for CPF:', cleanCPF);
-        return this.getFallbackData(cleanCPF);
-    }
-
-    async tryAPI(cpf) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
-
-        try {
-            console.log('🌐 CHAMANDO API OFICIAL PARA CPF:', cpf);
+            // Usar o novo serviço de API de CPF
+            const resultado = await this.cpfApiService.consultarCPF(cleanCPF);
             
-            const apiUrl = `/api/amnesia/?token=e9f16505-2743-4392-bfbe-1b4b89a7367c&cpf=${cpf}`;
-            
-            console.log('📋 URL DA API:', apiUrl);
-            
-            const fetchOptions = {
-                signal: controller.signal,
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Cache-Control': 'no-cache'
+            console.log('📊 RESULTADO FINAL DO DATA SERVICE:', resultado);
+
+            // Converter para formato esperado pelo sistema
+            return {
+                DADOS: {
+                    nome: resultado.nome,
+                    cpf: resultado.cpf,
+                    data_nascimento: resultado.nascimento,
+                    sexo: Math.random() > 0.5 ? 'M' : 'F',
+                    nome_mae: this.generateMotherName(resultado.nome)
                 },
-                credentials: 'omit',
-                cache: 'no-store',
-                mode: 'cors'
+                fonte: resultado.fonte,
+                status: resultado.status
             };
 
-            console.log('⚙️ OPÇÕES DE FETCH:', fetchOptions);
-            
-            const response = await fetch(apiUrl, fetchOptions);
-
-            clearTimeout(timeoutId);
-
-            console.log('📊 Response status:', response.status, response.statusText);
-            console.log('📋 Response headers:', Object.fromEntries(response.headers.entries()));
-
-            if (!response.ok) {
-                console.error(`❌ ERRO HTTP: ${response.status} - ${response.statusText}`);
-                throw new Error(`API Error: ${response.status} - ${response.statusText}`);
-            }
-
-            const responseText = await response.text();
-            console.log('📄 API Response Text:', responseText);
-            
-            if (!responseText || responseText.trim() === '') {
-                console.error('❌ RESPOSTA VAZIA DA API');
-                throw new Error('Resposta vazia da API');
-            }
-
-            try {
-                const data = JSON.parse(responseText);
-                console.log('📊 Parsed API data:', data);
-                
-                // Verificar formato da API Amnesia
-                if (data && data.DADOS && data.DADOS.nome && data.DADOS.cpf) {
-                    console.log('✅ API RETORNOU DADOS VÁLIDOS:', {
-                        nome: data.DADOS.nome,
-                        cpf: data.DADOS.cpf,
-                        data_nascimento: data.DADOS.data_nascimento,
-                        sexo: data.DADOS.sexo
-                    });
-                    
-                    console.log('🎯 NOME EXTRAÍDO DA API:', data.DADOS.nome);
-                    return data;
-                }
-                
-                console.error('❌ Invalid data format from API:', data);
-                throw new Error('Formato de dados inválido da API');
-            } catch (parseError) {
-                console.error('❌ JSON parse error:', parseError);
-                throw new Error('Erro ao processar resposta da API: ' + parseError.message);
-            }
-
         } catch (error) {
-            clearTimeout(timeoutId);
+            console.error('❌ ERRO NO DATA SERVICE:', error);
             
-            console.error('❌ API call error details:', {
-                name: error.name,
-                message: error.message,
-                stack: error.stack
-            });
-            
-            if (error.name === 'AbortError') {
-                console.error('⏰ Request was aborted (timeout)');
-                throw new Error('Timeout: A API demorou muito para responder');
-            } else if (error.message.includes('Failed to fetch')) {
-                console.error('🌐 Network error - possibly CORS or connectivity issue');
-                throw new Error('Erro de conectividade: Não foi possível acessar a API externa');
-            }
-            
-            throw error;
+            // Fallback final
+            return this.getFallbackData(cleanCPF);
         }
     }
 
     getFallbackData(cpf) {
-        console.log('⚠️ USANDO DADOS FALLBACK PARA CPF:', cpf);
+        console.log('⚠️ USANDO FALLBACK FINAL PARA CPF:', cpf);
         
-        // Gerar dados realistas baseados no CPF
         const names = [
             'JOÃO SILVA SANTOS',
             'MARIA OLIVEIRA COSTA', 
             'PEDRO SOUZA LIMA',
             'ANA PAULA FERREIRA',
             'CARLOS EDUARDO ALVES',
-            'FERNANDA SANTOS ROCHA',
-            'RICARDO PEREIRA DIAS',
-            'JULIANA COSTA MARTINS',
-            'BRUNO ALMEIDA SILVA',
-            'CAMILA RODRIGUES NUNES',
-            'RAFAEL SANTOS BARBOSA',
-            'LARISSA OLIVEIRA CRUZ'
+            'FERNANDA SANTOS ROCHA'
         ];
 
         const cpfIndex = parseInt(cpf.slice(-2)) % names.length;
         const selectedName = names[cpfIndex];
-
-        console.log('📝 DADOS FALLBACK GERADOS:');
-        console.log('🆔 CPF:', cpf);
-        console.log('👤 NOME FALLBACK:', selectedName);
 
         return {
             DADOS: {
@@ -151,7 +62,8 @@ export class DataService {
                 data_nascimento: this.generateBirthDate(cpf),
                 sexo: Math.random() > 0.5 ? 'M' : 'F',
                 nome_mae: this.generateMotherName(selectedName)
-            }
+            },
+            fonte: 'fallback_final'
         };
     }
 
@@ -162,6 +74,7 @@ export class DataService {
         
         return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
     }
+
     generateMotherName(childName) {
         const motherNames = [
             'MARIA JOSÉ SILVA',
@@ -176,20 +89,5 @@ export class DataService {
         
         const index = childName.length % motherNames.length;
         return motherNames[index];
-    }
-
-    generateFallbackData() {
-        return {
-            products: [
-                'Kit 12 caixas organizadoras + brinde',
-                'Conjunto de panelas antiaderentes',
-                'Smartphone Samsung Galaxy A54',
-                'Fone de ouvido Bluetooth',
-                'Carregador portátil 10000mAh',
-                'Camiseta básica algodão',
-                'Tênis esportivo Nike',
-                'Relógio digital smartwatch'
-            ]
-        };
     }
 }
