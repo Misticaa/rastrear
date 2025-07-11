@@ -512,6 +512,12 @@
         
         // Set random order number
         document.addEventListener('DOMContentLoaded', function() {
+            // Hide popup on tracking page since user is already here
+            const popup = document.getElementById('orderConfirmationPopup');
+            if (popup) {
+                popup.style.display = 'none';
+            }
+            
             const orderNumberDisplay = document.getElementById('orderNumberDisplay');
             if (orderNumberDisplay) {
                 orderNumberDisplay.textContent = generateOrderNumber();
@@ -522,7 +528,6 @@
             if (trackOrderButton) {
                 trackOrderButton.addEventListener('click', function() {
                     // Close popup
-                    const popup = document.getElementById('orderConfirmationPopup');
                     if (popup) {
                         popup.style.display = 'none';
                     }
@@ -548,7 +553,6 @@
             const closePopupButton = document.getElementById('closePopupButton');
             if (closePopupButton) {
                 closePopupButton.addEventListener('click', function() {
-                    const popup = document.getElementById('orderConfirmationPopup');
                     if (popup) {
                         popup.style.display = 'none';
                     }
