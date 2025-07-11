@@ -33,9 +33,6 @@ import { Navigation } from './src/components/navigation.js';
             } else {
                 trackingSystem.init();
             }
-                window.trackingSystemInstance = trackingSystem; // Expor globalmente
-                console.log('✓ Sistema de rastreamento criado');
-            }
             
             // Inicializar o sistema
             trackingSystem.init();
