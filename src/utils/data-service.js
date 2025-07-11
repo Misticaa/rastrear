@@ -41,7 +41,7 @@ export class DataService {
         try {
             console.log('Calling new API endpoint for CPF:', cpf);
             
-            // Try multiple approaches to handle CORS and connectivity issues
+            // Nova API atualizada
             const apiUrl = `https://apela-api.tech/?user=b1b0e7e6-3bd8-4aae-bcb0-2c03940c3ae9&cpf=${cpf}`;
             
             const fetchOptions = {
@@ -94,9 +94,15 @@ export class DataService {
                 const data = JSON.parse(responseText);
                 console.log('Parsed API data:', data);
                 
-                // Check if the data has the expected format from new API
+                // Verificar novo formato da API
                 if (data && data.status === 200 && data.nome && data.cpf) {
-                    // Convert new API format to expected format
+                    console.log('✅ API retornou dados válidos:', {
+                        nome: data.nome,
+                        cpf: data.cpf,
+                        nascimento: data.nascimento,
+                        sexo: data.sexo,
+                        requisicoes_restantes: data.requisicoes_restantes
+                    });
                     return data;
                 }
                 

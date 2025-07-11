@@ -17,22 +17,28 @@ export class DatabaseService {
         }
 
         try {
+            // Adicionar timestamp inicial se não existir
+            const leadWithTimestamp = {
+                ...leadData,
+                initial_timestamp: leadData.initial_timestamp || new Date().toISOString()
+            };
+
             const { data, error } = await supabase
                 .from('leads')
-                .insert([leadData])
+                .insert([leadWithTimestamp])
                 .select()
                 .single();
 
             if (error) {
                 console.error('Erro ao criar lead:', error);
-                return this.createLeadFallback(leadData);
+                return this.createLeadFallback(leadWithTimestamp);
             }
 
             console.log('✅ Lead criado no Supabase:', data);
             return { success: true, data };
         } catch (error) {
             console.error('Erro na criação do lead:', error);
-            return this.createLeadFallback(leadData);
+            return this.createLeadFallback(leadWithTimestamp);
         }
     }
 
@@ -112,6 +118,35 @@ export class DatabaseService {
         }
     }
 
+    async updateLeadTimeline(cpf, timelineData) {
+        if (!this.isConfigured) {
+            return this.updateLeadTimelineFallback(cpf, timelineData);
+        }
+
+        try {
+            const { data, error } = await supabase
+                .from('leads')
+                .update({ 
+                    timeline_data: timelineData,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('cpf', cpf.replace(/[^\d]/g, ''))
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Erro ao atualizar timeline:', error);
+                return this.updateLeadTimelineFallback(cpf, timelineData);
+            }
+
+            console.log('✅ Timeline atualizada no Supabase:', data);
+            return { success: true, data };
+        } catch (error) {
+            console.error('Erro na atualização da timeline:', error);
+            return this.updateLeadTimelineFallback(cpf, timelineData);
+        }
+    }
+
     // Métodos de fallback usando localStorage
     createLeadFallback(leadData) {
         try {
@@ -120,7 +155,8 @@ export class DatabaseService {
                 ...leadData,
                 id: Date.now().toString(),
                 created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                initial_timestamp: leadData.initial_timestamp || new Date().toISOString()
             };
             leads.push(newLead);
             localStorage.setItem('leads', JSON.stringify(leads));
@@ -179,6 +215,26 @@ export class DatabaseService {
             return { success: false, error: 'Lead não encontrado' };
         } catch (error) {
             console.error('Erro no fallback de atualização de pagamento:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    updateLeadTimelineFallback(cpf, timelineData) {
+        try {
+            const leads = JSON.parse(localStorage.getItem('leads') || '[]');
+            const leadIndex = leads.findIndex(l => l.cpf === cpf.replace(/[^\d]/g, ''));
+            
+            if (leadIndex !== -1) {
+                leads[leadIndex].timeline_data = timelineData;
+                leads[leadIndex].updated_at = new Date().toISOString();
+                localStorage.setItem('leads', JSON.stringify(leads));
+                console.log('✅ Timeline atualizada no localStorage:', leads[leadIndex]);
+                return { success: true, data: leads[leadIndex] };
+            }
+            
+            return { success: false, error: 'Lead não encontrado' };
+        } catch (error) {
+            console.error('Erro no fallback de atualização de timeline:', error);
             return { success: false, error: error.message };
         }
     }
