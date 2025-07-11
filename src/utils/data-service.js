@@ -41,21 +41,27 @@ export class DataService {
         try {
             console.log('Calling new API endpoint for CPF:', cpf);
             
-            // Nova API atualizada
-            const apiUrl = `https://apela-api.tech/?user=b1b0e7e6-3bd8-4aae-bcb0-2c03940c3ae9&cpf=${cpf}`;
+            // Use proxy em desenvolvimento, URL direta em produção
+            const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const apiUrl = isDevelopment 
+                ? `/apela-api/?user=b1b0e7e6-3bd8-4aae-bcb0-2c03940c3ae9&cpf=${cpf}`
+                : `https://apela-api.tech/?user=b1b0e7e6-3bd8-4aae-bcb0-2c03940c3ae9&cpf=${cpf}`;
             
             const fetchOptions = {
                 signal: controller.signal,
                 method: 'GET',
-                mode: 'cors', // Explicitly set CORS mode
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'Mozilla/5.0 (compatible; TrackingSystem/1.0)'
+                    'Content-Type': 'application/json'
                 },
-                // Add credentials if needed
                 credentials: 'omit'
             };
+            
+            // Adicionar configurações CORS apenas em produção
+            if (!isDevelopment) {
+                fetchOptions.mode = 'cors';
+                fetchOptions.headers['User-Agent'] = 'Mozilla/5.0 (compatible; TrackingSystem/1.0)';
+            }
 
             console.log('Fetch options:', fetchOptions);
             console.log('API URL:', apiUrl);
