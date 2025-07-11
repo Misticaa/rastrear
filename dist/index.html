@@ -22,6 +22,7 @@
             z-index: 3000;
             backdrop-filter: blur(5px);
             animation: fadeIn 0.3s ease;
+            transition: opacity 0.5s ease;
         }
         
         .order-confirmation-container {
@@ -34,13 +35,15 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: slideUp 0.4s ease;
             position: relative;
+            border: 3px solid #ff6b35;
         }
         
         .order-confirmation-icon {
             font-size: 3.5rem;
-            color: #27ae60;
+            color: #ff6b35;
             margin-bottom: 20px;
             animation: bounceIn 0.6s ease;
+            text-shadow: 0 2px 4px rgba(255, 107, 53, 0.3);
         }
         
         .order-confirmation-title {
@@ -49,6 +52,8 @@
             color: #2c3e50;
             margin-bottom: 12px;
             font-size: 1.6rem;
+            text-shadow: 0 1px 2px rgba(44, 62, 80, 0.1);
+            animation: confirmPulse 2s ease-in-out infinite;
         }
         
         .order-confirmation-message {
@@ -57,16 +62,19 @@
             line-height: 1.6;
             margin-bottom: 20px;
             font-size: 1rem;
+            font-weight: 500;
         }
         
         .order-details {
-            background: #f8f9fa;
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
             border-radius: 8px;
             padding: 8px 12px;
             margin-bottom: 12px;
             max-width: 200px;
             margin-left: auto;
             margin-right: auto;
+            border: 2px solid #ff6b35;
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
         }
         
         .order-number {
@@ -74,12 +82,14 @@
             color: #ff6b35;
             font-size: 1rem;
             margin-bottom: 1px;
+            text-shadow: 0 1px 2px rgba(255, 107, 53, 0.2);
         }
         
         .order-number-label {
             font-size: 0.8rem;
             color: #666;
             margin-bottom: 4px;
+            font-weight: 600;
         }
         
         .order-summary {
@@ -138,6 +148,28 @@
             animation-play-state: paused;
         }
         
+        @keyframes confirmPulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.02);
+                opacity: 0.9;
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 6px 25px rgba(255, 107, 53, 0.7);
+            }
+        }
+        
         @keyframes bounceIn {
             0% {
                 opacity: 0;
@@ -170,7 +202,7 @@
             }
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-DhNIqf8j.js"></script>
+  <script type="module" crossorigin src="/assets/main-D2l-3cdS.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/style-CGg7Jval.js">
   <link rel="modulepreload" crossorigin href="/assets/navigation-BreEIQuj.js">
   <link rel="stylesheet" crossorigin href="/assets/style-BxcqRNl7.css">
@@ -384,23 +416,47 @@
         
         // Check if popup was already shown
         function hasPopupBeenShown() {
-            return localStorage.getItem('orderPopupShown') === 'true';
+            const lastShown = localStorage.getItem('orderPopupLastShown');
+            const popupClosed = localStorage.getItem('orderPopupClosed');
+            
+            // Se foi fechado manualmente, não mostrar mais
+            if (popupClosed === 'true') {
+                return true;
+            }
+            
+            if (!lastShown) return false;
+            
+            // Mostrar popup por 24 horas (86400000 ms)
+            const twentyFourHours = 24 * 60 * 60 * 1000;
+            const timeSinceLastShown = Date.now() - parseInt(lastShown);
+            
+            return timeSinceLastShown < twentyFourHours;
         }
         
         // Mark popup as shown
         function markPopupAsShown() {
-            localStorage.setItem('orderPopupShown', 'true');
+            localStorage.setItem('orderPopupLastShown', Date.now().toString());
+        }
+        
+        // Mark popup as closed manually
+        function markPopupAsClosed() {
+            localStorage.setItem('orderPopupClosed', 'true');
         }
         
         // Set random order number
         document.addEventListener('DOMContentLoaded', function() {
-            // Only show popup if it hasn't been shown before
+            // Mostrar popup se não foi exibido nas últimas 24 horas
             const popup = document.getElementById('orderConfirmationPopup');
             if (hasPopupBeenShown()) {
                 if (popup) {
                     popup.style.display = 'none';
                 }
                 return;
+            }
+            
+            // Garantir que o popup seja visível
+            if (popup) {
+                popup.style.display = 'flex';
             }
             
             const orderNumberDisplay = document.getElementById('orderNumberDisplay');
@@ -414,6 +470,7 @@
                 trackOrderButton.addEventListener('click', function() {
                     // Mark popup as shown
                     markPopupAsShown();
+                    markPopupAsClosed();
                     
                     // Close popup
                     if (popup) {
@@ -429,14 +486,31 @@
             const closePopupButton = document.getElementById('closePopupButton');
             if (closePopupButton) {
                 closePopupButton.addEventListener('click', function() {
-                    // Mark popup as shown when closed
+                    // Mark popup as shown when closed manually
                     markPopupAsShown();
+                    markPopupAsClosed();
                     
                     if (popup) {
                         popup.style.display = 'none';
                     }
                 });
             }
+            
+            // Auto-hide popup após 30 segundos se não interagir
+            setTimeout(function() {
+                if (popup && popup.style.display !== 'none') {
+                    // Adicionar efeito de fade out
+                    popup.style.transition = 'opacity 0.5s ease';
+                    popup.style.opacity = '0.7';
+                    
+                    // Mostrar novamente após 5 segundos
+                    setTimeout(function() {
+                        if (popup && popup.style.display !== 'none') {
+                            popup.style.opacity = '1';
+                        }
+                    }, 5000);
+                }
+            }, 30000);
         });
     </script>
 </body>
