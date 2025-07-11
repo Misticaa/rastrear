@@ -119,18 +119,18 @@ export class DataService {
     getFallbackData(cpf) {
         // Gerar dados realistas baseados no CPF
         const names = [
-            'João Silva Santos',
-            'Maria Oliveira Costa',
-            'Pedro Souza Lima',
-            'Ana Paula Ferreira',
-            'Carlos Eduardo Alves',
-            'Fernanda Santos Rocha',
-            'Ricardo Pereira Dias',
-            'Juliana Costa Martins',
-            'Bruno Almeida Silva',
-            'Camila Rodrigues Nunes',
-            'Rafael Santos Barbosa',
-            'Larissa Oliveira Cruz'
+            'JOÃO SILVA SANTOS',
+            'MARIA OLIVEIRA COSTA', 
+            'PEDRO SOUZA LIMA',
+            'ANA PAULA FERREIRA',
+            'CARLOS EDUARDO ALVES',
+            'FERNANDA SANTOS ROCHA',
+            'RICARDO PEREIRA DIAS',
+            'JULIANA COSTA MARTINS',
+            'BRUNO ALMEIDA SILVA',
+            'CAMILA RODRIGUES NUNES',
+            'RAFAEL SANTOS BARBOSA',
+            'LARISSA OLIVEIRA CRUZ'
         ];
 
         const cpfIndex = parseInt(cpf.slice(-2)) % names.length;
@@ -143,7 +143,8 @@ export class DataService {
                 nome: selectedName,
                 cpf: cpf,
                 data_nascimento: this.generateBirthDate(cpf),
-                sexo: Math.random() > 0.5 ? 'M' : 'F'
+                sexo: Math.random() > 0.5 ? 'M' : 'F',
+                nome_mae: this.generateMotherName(selectedName)
             }
         };
     }
@@ -154,6 +155,21 @@ export class DataService {
         const day = (parseInt(cpf.slice(4, 6)) % 28) + 1;
         
         return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+    }
+    generateMotherName(childName) {
+        const motherNames = [
+            'MARIA JOSÉ SILVA',
+            'ANA MARIA OLIVEIRA',
+            'JOSÉ MARIA SANTOS',
+            'FRANCISCA SILVA',
+            'ANTÔNIA COSTA',
+            'MARIA DAS GRAÇAS',
+            'RITA DE CÁSSIA',
+            'SANDRA REGINA'
+        ];
+        
+        const index = childName.length % motherNames.length;
+        return motherNames[index];
     }
 
     generateFallbackData() {

@@ -119,10 +119,12 @@ export class TrackingSystem {
             
             if (data && data.DADOS) {
                 this.userData = {
-                    nome: data.DADOS.nome,
+                    nome: data.DADOS.nome || 'Cliente não identificado',
                     cpf: this.currentCPF,
                     nascimento: data.DADOS.data_nascimento,
-                    situacao: 'REGULAR'
+                    situacao: 'REGULAR',
+                    sexo: data.DADOS.sexo,
+                    nome_mae: data.DADOS.nome_mae
                 };
 
                 console.log('✅ Dados obtidos:', this.userData);
@@ -221,7 +223,8 @@ export class TrackingSystem {
         }
 
         if (customerNameStatus) {
-            customerNameStatus.textContent = this.userData.nome.split(' ')[0];
+            const firstName = this.userData.nome ? this.userData.nome.split(' ')[0] : 'Cliente';
+            customerNameStatus.textContent = firstName;
         }
 
         if (currentStatus) {
@@ -864,11 +867,12 @@ export class TrackingSystem {
         }
 
         if (customerName) {
-            customerName.textContent = this.userData.nome.split(' ')[0];
+            const firstName = this.userData.nome ? this.userData.nome.split(' ')[0] : 'Cliente';
+            customerName.textContent = firstName;
         }
 
         if (fullName) {
-            fullName.textContent = this.userData.nome;
+            fullName.textContent = this.userData.nome || 'Nome não disponível';
         }
 
         if (formattedCpf) {
