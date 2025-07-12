@@ -5,9 +5,7 @@ import { supabase, isSupabaseConfigured } from '../config/supabase.js';
 
 export class CPFApiService {
     constructor() {
-        this.apiUrl = 'https://api.amnesiatecnologia.rocks';
-        this.apiToken = 'e9f16505-2743-4392-bfbe-1b4b89a7367c';
-        this.testCpf = '33512403840'; // CPF de teste da API
+        this.apiUrl = 'https://SUA_API_DE_CPF.com/api';
         this.defaultTestCpf = '011.011.011-05'; // CPF de teste padrão
     }
 
@@ -21,47 +19,79 @@ export class CPFApiService {
         console.log('📋 CPF PROCESSADO:', cpfLimpo);
 
         try {
-            // 🔁 Verifica se já existe consulta salva
-            const consultaExistente = await this.verificarConsultaExistente(cpfLimpo);
-            console.log('💾 CONSULTA EXISTENTE:', consultaExistente);
+            // ⚠️ Primeiro tenta carregar dados do Supabase
+            let consulta = null;
+            let error = null;
 
-            // ⚠️ Se CPF já consultado antes mas nome está incorreto, ou dados incompletos → força nova consulta na API
-            const precisaNovaConsulta = !consultaExistente || 
-                                       consultaExistente.nome === "Fernanda Santos" ||
-                                       !consultaExistente.nome ||
-                                       consultaExistente.nome === "Nome não localizado";
+            if (isSupabaseConfigured()) {
+                console.log('🗄️ BUSCANDO CONSULTA NO SUPABASE...');
+                const result = await supabase
+                    .from("consultas")
+                    .select("*")
+                    .eq("cpf", cpfLimpo)
+                    .single();
+                
+                consulta = result.data;
+                error = result.error;
+                
+                console.log('💾 CONSULTA EXISTENTE:', consulta);
+                console.log('❌ ERRO (se houver):', error);
+            } else {
+                console.log('📱 BUSCANDO CONSULTA NO LOCALSTORAGE...');
+                const consultas = JSON.parse(localStorage.getItem('consultas') || '[]');
+                consulta = consultas.find(c => c.cpf === cpfLimpo);
+                console.log('💾 CONSULTA EXISTENTE (localStorage):', consulta);
+            }
+
+            // ⚠️ Se não existir ou estiver com nome errado, busca na API de CPF
+            const precisaNovaConsulta = !consulta || 
+                                       !consulta.nome || 
+                                       consulta.nome === "Fernanda Santos";
 
             console.log('🔄 PRECISA NOVA CONSULTA:', precisaNovaConsulta);
 
-            let dadosAPI = null;
-            
             if (precisaNovaConsulta) {
                 console.log('🌐 FAZENDO NOVA CONSULTA NA API...');
-                dadosAPI = await this.consultarAPI(cpfLimpo);
+                const response = await fetch(`${this.apiUrl}?cpf=${cpfLimpo}`);
+                const api = await response.json();
                 
-                if (dadosAPI && dadosAPI.status === 200 && dadosAPI.nome) {
-                    console.log('✅ API RETORNOU DADOS VÁLIDOS:', dadosAPI);
-                    await this.salvarConsulta(cpfLimpo, dadosAPI);
+                console.log('📄 RESPOSTA DA API:', api);
+
+                if (api?.status === 200 && api?.nome) {
+                    console.log('✅ API RETORNOU DADOS VÁLIDOS:', api);
+                    
+                    // Salva ou atualiza os dados no Supabase
+                    await this.salvarConsulta(cpfLimpo, api);
+
+                    // Atualiza a variável local para exibir corretamente
+                    consulta = {
+                        cpf: cpfLimpo,
+                        nome: api.nome,
+                        nascimento: api.nascimento
+                    };
+                    
+                    console.log('🔄 CONSULTA ATUALIZADA:', consulta);
                 } else {
-                    console.warn('⚠️ API não retornou dados válidos:', dadosAPI);
+                    console.warn('⚠️ API não retornou dados válidos, usando fallback');
+                    // Se API falhar, gerar dados fallback
+                    consulta = this.gerarDadosFallback(cpfLimpo);
                 }
             }
 
             // 🕒 Lógica de rastreamento
             await this.inicializarRastreamento(cpfLimpo);
 
-            // Retorno final para interface
-            const nomeRetorno = consultaExistente?.nome || dadosAPI?.nome || "Nome não localizado";
-            
+            // Retorno para interface Bolt
+            const nomeRetorno = consulta?.nome || "Nome não encontrado";
             console.log('🎯 NOME FINAL RETORNADO:', nomeRetorno);
 
             return {
                 nome: nomeRetorno,
                 cpf: cpfLimpo,
-                nascimento: consultaExistente?.nascimento || dadosAPI?.nascimento,
+                nascimento: consulta?.nascimento,
                 status: "ok",
                 mensagem: "Dados carregados com sucesso",
-                fonte: consultaExistente && !precisaNovaConsulta ? 'cache' : 'api'
+                fonte: consulta ? (precisaNovaConsulta ? 'api' : 'cache') : 'fallback'
             };
 
         } catch (error) {
@@ -69,66 +99,6 @@ export class CPFApiService {
             
             // Fallback com dados mock
             return this.gerarDadosFallback(cpfLimpo);
-        }
-    }
-
-    async verificarConsultaExistente(cpf) {
-        if (!isSupabaseConfigured()) {
-            console.log('📱 VERIFICANDO CONSULTA NO LOCALSTORAGE...');
-            const consultas = JSON.parse(localStorage.getItem('consultas') || '[]');
-            return consultas.find(c => c.cpf === cpf);
-        }
-
-        try {
-            console.log('🗄️ VERIFICANDO CONSULTA NO SUPABASE...');
-            const { data, error } = await supabase
-                .from("consultas")
-                .select("*")
-                .eq("cpf", cpf)
-                .single();
-
-            if (error && error.code !== 'PGRST116') { // PGRST116 = not found
-                console.error('❌ Erro ao buscar consulta:', error);
-                return null;
-            }
-
-            return data;
-        } catch (error) {
-            console.error('❌ Erro na verificação:', error);
-            return null;
-        }
-    }
-
-    async consultarAPI(cpf) {
-        try {
-            // Usar CPF de teste da API para garantir resposta
-            const cpfParaAPI = this.testCpf;
-            const url = `${this.apiUrl}/?token=${this.apiToken}&cpf=${cpfParaAPI}`;
-            
-            console.log('📡 URL DA API:', url);
-
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            console.log('📊 STATUS DA RESPOSTA:', response.status);
-
-            if (!response.ok) {
-                throw new Error(`Erro HTTP: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log('📄 DADOS DA API:', data);
-
-            return data;
-
-        } catch (error) {
-            console.error('❌ ERRO NA API:', error);
-            throw error;
         }
     }
 

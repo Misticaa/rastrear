@@ -1,12 +1,12 @@
 /**
- * Serviço para busca de dados de CPF com nova lógica
+ * Serviço para busca de dados de CPF com lógica exata especificada
  */
 import { CPFApiService } from '../services/cpf-api-service.js';
 
 export class DataService {
     constructor() {
         this.cpfApiService = new CPFApiService();
-        console.log('🚀 DataService inicializado com nova lógica');
+        console.log('🚀 DataService inicializado com lógica exata');
     }
 
     async fetchCPFData(cpf) {
@@ -14,7 +14,7 @@ export class DataService {
         console.log('🔍 BUSCANDO DADOS PARA CPF:', cleanCPF);
 
         try {
-            // Usar o novo serviço de API de CPF
+            // Usar o serviço de API de CPF com lógica exata
             const resultado = await this.cpfApiService.consultarCPF(cleanCPF);
             
             console.log('📊 RESULTADO FINAL DO DATA SERVICE:', resultado);
