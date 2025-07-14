@@ -5,7 +5,7 @@ import { supabase, isSupabaseConfigured } from '../config/supabase.js';
 
 export class CPFApiService {
     constructor() {
-        this.apiUrl = 'https://SUA_API_DE_CPF.com/api';
+        this.apiUrl = 'https://api.amnesiatecnologia.rocks/?token=e9f16505-2743-4392-bfbe-1b4b89a7367c&cpf=33512403840';
         this.defaultTestCpf = '011.011.011-05'; // CPF de teste padrão
     }
 
